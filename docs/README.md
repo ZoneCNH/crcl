@@ -17,11 +17,13 @@ CRCL 的研究主线不是“稳定币公司”四个字，而是五个判断：
 
 1. `framework/00-research-map.md`：先看总研究地图。
 2. `metrics/00-metric-dictionary.md`：再看指标口径。
-3. `risk/00-risk-map.md`：确认哪些信号会破坏投资逻辑。
-4. `valuation/00-valuation-framework.md`：把业务指标映射到估值。
-5. `playbook/00-research-routine.md`：按日、周、季执行。
-6. `autoresearch/00-loop.md`：用固定循环继续迭代研究框架。
-7. `sources.md`：最后核对官方来源。
+3. `metrics/04-competition-dashboard.md`：每周填竞争仪表盘。
+4. `risk/00-risk-map.md`：确认哪些信号会破坏投资逻辑。
+5. `valuation/00-valuation-framework.md`：把业务指标映射到估值。
+6. `playbook/00-research-routine.md`：按日、周、季执行。
+7. `playbook/02-competition-review.md`：按竞争维度做专项复盘。
+8. `autoresearch/00-loop.md`：用固定循环继续迭代研究框架。
+9. `sources.md`：最后核对官方来源。
 
 ## 目录职责
 
