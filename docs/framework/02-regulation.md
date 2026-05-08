@@ -88,6 +88,48 @@ NPRM 是 Notice of Proposed Rulemaking，白话就是拟议规则，还不是最
 最终规则没有发布前，所有监管结论必须保留状态标签。
 禁止把评论期变化当成已生效规则。
 
+## GENIUS Act 合规成本对 RLDC margin 的量化影响
+
+合规成本是结构性成本，不是一次性成本，必须分项量化并映射到 RLDC margin 的压力方向。
+
+### 合规成本来源分类
+
+| 成本类别 | 触发规则 | 影响方向 | 量化难度 |
+| -------- | -------- | -------- | -------- |
+| 储备托管与审计成本上升 | GENIUS Act 储备披露 + OCC 审计要求 | 增加 operating expenses，压缩 Adjusted EBITDA | 中（能从历史合规成本变化推算） |
+| BSA/AML 系统投入 | Treasury / FinCEN 拟议规则 | 增加合规人员和系统，压缩 RLDC 下游 | 中 |
+| 制裁合规筛查成本 | OFAC 制裁合规要求 | 每笔跨境交易的筛查成本，影响 CPN 单位利润 | 低（无公开数据） |
+| 第三方激励重新定性 | yield workaround 限制 | 如果 Coinbase 返利被视为变相 yield → 直接影响 distribution costs | 高（直接冲击 RLDC margin） |
+| 资本充足要求 | OCC 拟议规则 | 如果有资本要求，占用运营资金 | 低（拟议规则未最终确认） |
+
+### RLDC margin 压力情景
+
+在最终规则未发布前，以区间估算而非单点：
+
+```text
+轻度合规成本情景（最终规则只要求披露和审计，不限制激励）：
+  合规成本新增：0.3-0.5 亿美元/年（运营费用层面）
+  对 RLDC margin 影响：可忽略（RLDC 未变，operating expenses 增加）
+  净影响：Adjusted EBITDA 压缩约 5-8%，RLDC margin 不变
+
+中度合规成本情景（BSA/AML + 制裁合规全面落地，无激励限制）：
+  合规成本新增：0.5-1.0 亿美元/年
+  对 RLDC margin 影响：无直接影响，但运营成本增加
+  净影响：Adjusted EBITDA 压缩约 8-15%，RLDC margin 不变
+
+重度合规成本情景（第三方激励被定义为变相 yield，Coinbase/Binance 分成结构必须重组）：
+  对 RLDC 的直接影响：Distribution costs 可能重构
+  对 RLDC margin 影响：不确定，方向取决于谈判结果
+  净影响：触发 P0 监管预警，立即重算 RLDC margin 假设
+```
+
+### 最终规则发布前的使用规则
+
+1. 在拟议规则阶段，合规成本压力只作为 P1 观察项，不用于调整当前目标价。
+2. OCC 和 Treasury 最终规则发布后，必须在 T+24h 内按上述分类重算一次 RLDC margin。
+3. 如果管理层在 earnings call 中披露合规成本数字，该数字优先于上述区间估算。
+4. 第三方激励重新定性的信号出现时，立即升级为 P0，暂停所有基于当前 RLDC margin 的目标价计算。
+
 ## 关键问题
 
 每次监管更新必须回答：
