@@ -1,0 +1,10 @@
+{
+  "name": "crcl",
+  "private": true,
+  "scripts": {
+    "lint:md": "markdownlint \"docs/**/*.md\" --ignore \"docs/archive/**/*.md\""
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.48.0"
+  }
+}
