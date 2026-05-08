@@ -295,6 +295,32 @@ competition score =
 | 40-54  | 中性偏弱     | 暂停上调估值倍数     |
 | 0-39   | 竞争结构恶化 | 重算增长率和长期倍数 |
 
+## 竞争评分分维度阈值来源
+
+competition_score 的七个维度权重和阈值来源于 autoresearch 550 次竞争迭代，以下记录每个维度的来源依据，便于季度自检时核实和调整。
+
+### 各维度权重来源
+
+| 维度 | 权重 | 阈值来源 | 更新规则 |
+| ---- | ---- | -------- | -------- |
+| USDC relative share（25%） | DefiLlama / CoinGecko 月度稳定币市占率 | USDC 占稳定币总市值比例；基准：20-25% 区间为中性，>25% 为强化，<20% 为降级 | 每周更新，月度计算评分 |
+| Distribution economics（20%） | RLDC margin（主口径）；Q4 2025 实测 42% | RLDC margin：38% 告警线，40-42% 中性，>42% 强化 | 每季度财报后更新 |
+| Chain usage quality（15%） | Dune 链上分布；Adjusted transfer volume（CoinMetrics） | 高频、大额、真实场景用途评高分；刷量或低质量使用评低分 | 每周扫一次，双周更新评分 |
+| Regulated enterprise adoption（15%） | CPN 机构数（55 家已接入，74 家审核中，截至 2026-02） | 机构数增长 + TPV 增长 = 满分；只有机构数无 TPV = 中等 | 每季度财报 + 重大公告 |
+| Yield-product leakage（10%） | RWA.xyz；USDe AUM；DefiLlama RWA | USDe / BUIDL / USDY AUM 占 USDC 流通量比例；<10% 为低风险，>20% 为高风险 | 每周 |
+| Bank/tokenized deposit pressure（10%） | OCC / FDIC / Federal Reserve 披露；银行公告 | 无银行稳定币获得企业采用 = 满分；银行稳定币试点出现 = 降分 | 按监管事件和银行公告更新 |
+| Stock and options crowding（5%） | FINRA short interest；期权 IV；Form 4 | 做空 <10% 为低风险，>20% 为高风险；高 IV 额外降分 | 双周 |
+
+### 权重调整规则
+
+权重不是固定不变的，以下情况触发季度自检时重新校准：
+
+1. **分销经济性越来越重要**：如果 Coinbase 持仓占比超过 35% 且 RLDC margin 连续下滑，distribution economics 权重可上调至 25%，同时压低其他维度。
+2. **银行稳定币加速进入**：如果银行稳定币开始获得企业客户，bank/tokenized deposit pressure 权重可上调至 15%。
+3. **平台化已验证**：如果 Other revenue 占比超过 15%，chain usage quality 与 regulated enterprise adoption 合并权重可提升以反映平台化实质。
+
+**权重调整必须在 autoresearch 日志中记录，不能静默修改。**
+
 ## 竞争预警
 
 | 预警                                | 级别 | 触发                |
