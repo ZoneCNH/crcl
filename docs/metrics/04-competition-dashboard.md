@@ -70,11 +70,37 @@ competition score =
 | RLDC margin                    |        |        |      | Circle filings             |      |
 | adjusted transfer volume       |        |        |      | CoinMetrics / Dune         |      |
 | active addresses               |        |        |      | Dune / Santiment           |      |
+| PYUSD / FDUSD supply           |        |        |      | DefiLlama / CoinGecko      |      |
 | USDe / sUSDe AUM               |        |        |      | Ethena / DefiLlama         |      |
 | BUIDL / USDY / USYC AUM        |        |        |      | RWA.xyz                    |      |
 | CPN TPV                        |        |        |      | Circle disclosures         |      |
 | bank stablecoin events         |        |        |      | OCC / FDIC / bank releases |      |
 | tokenized deposits events      |        |        |      | FDIC / bank releases       |      |
+
+## 渠道议价记录
+
+| 复核项                | 本周证据 | 判断 | 动作 |
+| --------------------- | -------- | ---- | ---- |
+| Coinbase 分成压力     |          |      |      |
+| Base 生态绑定         |          |      |      |
+| USDC on Platform 占比 |          |      |      |
+| 第三方钱包激励        |          |      |      |
+| 交易所余额质量        |          |      |      |
+| 渠道集中度            |          |      |      |
+| 分销成本率            |          |      |      |
+| 分销协议变化          |          |      |      |
+
+## 稳定币竞争记录
+
+| 复核项                  | 本周证据 | 判断 | 动作 |
+| ----------------------- | -------- | ---- | ---- |
+| USDT dominance          |          |      |      |
+| PYUSD / FDUSD growth    |          |      |      |
+| USDe AUM                |          |      |      |
+| BUIDL / USDY / USYC AUM |          |      |      |
+| bank stablecoin         |          |      |      |
+| tokenized deposits      |          |      |      |
+| exchange liquidity      |          |      |      |
 
 ## 快速判定
 
@@ -97,9 +123,11 @@ competition score：
 本周最弱证据：
 USDC relative share：
 distribution economics：
+渠道议价矩阵：
 chain usage quality：
 regulated enterprise adoption：
 yield-product leakage：
+稳定币竞争矩阵：
 bank/tokenized deposit pressure：
 stock and options crowding：
 结论：

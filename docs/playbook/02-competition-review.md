@@ -28,7 +28,8 @@
 7. 搜索银行稳定币和 tokenized deposits 事件。
 8. 填 `metrics/04-competition-dashboard.md`。
 9. 计算 competition score。
-10. 输出增强、降级或观察。
+10. 对照渠道议价矩阵和稳定币竞争矩阵。
+11. 输出增强、降级或观察。
 
 ## 判断顺序
 
@@ -38,6 +39,17 @@
 先看是否改变动作，再写结论。
 
 Dune 是链上数据平台，白话就是别人做好的链上查询和仪表盘；口径必须核对。
+
+## 矩阵复核清单
+
+| 矩阵       | 复核重点                                      | 不合格信号                  |
+| ---------- | --------------------------------------------- | --------------------------- |
+| 渠道议价   | Coinbase 分成、Base 绑定、USDC rewards、渠道集中度 | 供应增长但 RLDC margin 下滑 |
+| 稳定币竞争 | USDT dominance、PYUSD、FDUSD、USDe、RWA、银行稳定币 | 总盘扩张但 USDC 份额下降    |
+| 平台化     | CPN TPV、Other revenue、Arc 主网、费用模型    | 使用量增长但收入不增长      |
+| 监管       | 第三方激励、yield workaround、BSA/AML         | 激励被认定为变相 yield      |
+
+USDC rewards 是 USDC 奖励，白话就是合作方用奖励吸引用户持有或使用 USDC。
 
 ## 升级规则
 

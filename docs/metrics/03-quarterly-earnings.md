@@ -55,6 +55,26 @@ Adjusted EBITDA margin =
 5. USDC 增长来自交易、DeFi、支付还是企业结算。
 6. 锁定期、二次发行、内部人减持节奏。
 
+## Autoresearch 十项财务复核
+
+财报结论必须把 `framework/01-business-model.md` 的十项复核填完。
+
+| 复核项                    | 本季判断 | missing_info |
+| ------------------------- | -------- | ------------ |
+| Reserve income 依赖度     |          |              |
+| RLDC margin 稳定性        |          |              |
+| Other revenue 可重复性    |          |              |
+| average USDC 解释力       |          |              |
+| distribution cost 弹性    |          |              |
+| Adjusted EBITDA 转化      |          |              |
+| 收入确认口径              |          |              |
+| 成本一次性因素            |          |              |
+| FY 指引质量               |          |              |
+| 财报披露完整性            |          |              |
+
+未披露项写 `missing_info`。
+不能用管理层叙事替代 SEC filing 或财报数值。
+
 ## 财报结论模板
 
 ```text
@@ -64,7 +84,8 @@ Adjusted EBITDA margin =
 2. Reserve return rate：
 3. RLDC margin：
 4. Other revenue share：
-5. CPN / Arc 进展：
+5. 十项财务复核：
+6. CPN / Arc 进展：
 动作：
 ```
 

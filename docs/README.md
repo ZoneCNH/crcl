@@ -38,6 +38,20 @@ CRCL 的研究主线不是“稳定币公司”四个字，而是五个判断：
 | `archive/`      | 原始文档归档，不作为最新结论               |
 | `sources.md`    | 官方来源索引和核验优先级                   |
 
+## Autoresearch 矩阵入口
+
+上一轮 1000 次 autoresearch 中，474 条已落到 `framework/`。
+
+| 使用场景 | 入口文件                         | 执行文件                              |
+| -------- | -------------------------------- | ------------------------------------- |
+| 财报复核 | `framework/01-business-model.md` | `metrics/03-quarterly-earnings.md`    |
+| 监管复核 | `framework/02-regulation.md`     | `playbook/00-research-routine.md`     |
+| 竞争复核 | `framework/03-competition.md`    | `metrics/04-competition-dashboard.md` |
+| 平台复核 | `framework/04-platform-option.md` | `playbook/02-competition-review.md`   |
+
+矩阵不是新结论。
+矩阵是复核顺序，白话就是遇到财报、监管、竞争、产品事件时先查哪张表。
+
 ## 更新规则
 
 P0 指标每日更新，P1 指标每周更新，P2 指标按季度或事件更新。

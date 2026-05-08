@@ -17,6 +17,12 @@
 2.
 3.
 
+矩阵复核：
+1. 财务桥：
+2. 监管：
+3. 竞争：
+4. 平台化：
+
 动作：
 
 风险：
@@ -54,6 +60,8 @@ Circle Transparency 更新或监管公告。
 2. USDC 市占率变化：
 3. transfer volume / active addresses：
 4. 竞争对手变化：
+5. 渠道议价矩阵：
+6. 稳定币竞争矩阵：
 
 动作：
 
@@ -72,7 +80,8 @@ Circle Transparency 更新或监管公告。
 2. Reserve return rate：
 3. RLDC margin：
 4. Other revenue share：
-5. CPN / Arc 进展：
+5. 十项财务复核：
+6. CPN / Arc 进展：
 
 动作：
 
