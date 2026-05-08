@@ -52,6 +52,26 @@ NPRM 是 Notice of Proposed Rulemaking，白话就是监管机构发布草案并
 TVL 是 Total Value Locked，白话就是协议里锁定的资金规模。
 AUM 是 Assets Under Management，白话就是管理资产规模。
 
+## 来源有效性检查
+
+来源 URL 会随公司或监管机构的网站结构变化而失效。每次框架自检时按以下方式核查：
+
+### 检查规则
+
+| 来源类型 | 检查方式 | 失效信号 | 处理 |
+| -------- | -------- | -------- | ---- |
+| Circle pressroom / investor relations | 访问页面确认内容是否当前版本 | 页面 404 或内容已过期 | 搜索 Circle 官网最新链接替换 |
+| SEC EDGAR | EDGAR search 搜索公司 CIK 号（1876042）查最新 filing | 链接指向旧 filing | 换用 EDGAR 搜索入口，不用硬链接 |
+| OCC / Treasury / Congress | 访问确认页面状态和文件日期 | 规则状态变化（如 NPRM → Final Rule） | 更新链接并在"当前已核验事实"中标注新状态 |
+| DefiLlama / CoinGecko / Dune | 访问页面确认数据仍在更新 | 数据停更超 30 天 | 换用替代来源，或在使用时标注"数据截至 YYYY-MM-DD" |
+| RWA.xyz | 同上 | 同上 | 同上 |
+
+### 最近检查记录
+
+| 检查日期 | 发现问题 | 处理结果 |
+| -------- | -------- | -------- |
+| 2026-05-08（初始建立） | 无 | 全部来源核验有效 |
+
 ## 核验纪律
 
 1. 财务数字以 SEC filing 和 Circle earnings release 为准。
