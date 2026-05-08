@@ -67,7 +67,8 @@ competition score =
 | USDC circulating supply        |        |        |      | Circle Transparency        |      |
 | Base USDC supply               |        |        |      | Dune / TokenTerminal       |      |
 | Coinbase products average USDC |        |        |      | Coinbase filings           |      |
-| RLDC margin                    |        |        |      | Circle filings             |      |
+| RLDC margin（主，÷储备收入）   |        |        |      | Circle filings（自算）     |      |
+| RLDC margin 全口径（÷总收入）  |        |        |      | 仅 Other revenue >10% 时填 |      |
 | adjusted transfer volume       |        |        |      | CoinMetrics / Dune         |      |
 | active addresses               |        |        |      | Dune / Santiment           |      |
 | PYUSD / FDUSD supply           |        |        |      | DefiLlama / CoinGecko      |      |

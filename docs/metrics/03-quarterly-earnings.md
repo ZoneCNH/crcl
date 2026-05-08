@@ -28,7 +28,8 @@ Reserve income =
 Other revenue =
 Distribution and transaction costs =
 RLDC = Total revenue and reserve income - Distribution and transaction costs
-RLDC margin = RLDC / Total revenue and reserve income
+RLDC margin（主） = RLDC / Reserve income          # 告警基准，见 metrics/00
+RLDC margin 全口径（辅） = RLDC / Total revenue and reserve income  # Other revenue >10% 时填写
 Other revenue share = Other revenue / Total revenue and reserve income
 Adjusted EBITDA =
 Adjusted EBITDA margin =
@@ -41,7 +42,7 @@ Adjusted EBITDA margin =
 | Average USDC        | 同比和环比增长 | 同比增长、环比平稳 | 环比下降且无解释     |
 | Reserve return rate | 稳定或高于预期 | 小幅下降           | 大幅下降且规模未抵消 |
 | RLDC margin         | 高于 40%       | 38-40%             | 低于 38%             |
-| Other revenue share | 超过 10%       | 5-10%              | 低于 5% 且无增长     |
+| Other revenue share | 超过 10% → [平台化切换条件①/5 满足]，单条件不触发切换，参见 valuation/00 | 5-10% | 低于 5% 且无增长 |
 | FY 指引             | 上修           | 维持               | 下修                 |
 
 ## 管理层问答
