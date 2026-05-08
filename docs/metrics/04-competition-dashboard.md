@@ -131,6 +131,8 @@ competition score：
 
 ## Competition Score
 
+> 打分细则（各档位具体条件）见 `metrics/05-competition-scoring-rubric.md`，本表仅记录打分结果。
+
 ```text
 competition score =
   25% USDC relative share
@@ -151,6 +153,8 @@ competition score =
 | yield-product leakage           |  10% |          | USDe、BUIDL、USDY、USYC AUM                               |      |
 | bank/tokenized deposit pressure |  10% |          | FDIC/OCC/银行公告、tokenized deposits 试点                |      |
 | stock and options crowding      |   5% |          | short interest、IV、lock-up、Form 4                       |      |
+
+> 两人分差≥15分时执行 `metrics/05-competition-scoring-rubric.md` 对账流程。
 
 ## 阈值解释
 
@@ -241,3 +245,68 @@ stock and options crowding：
 missing_info：
 下次复盘触发：
 ```
+
+---
+
+## 新增（2026-05-08）
+
+## 当前评分基准（2026-05-08）
+
+本表记录最新一次正式打分结果，每次打分后覆盖更新。维度定义与档位条件详见 `metrics/05-competition-scoring-rubric.md`。
+
+| 维度 | 权重 | 本周得分 | 依据摘要 | 较上周变化 |
+| ---- | ---: | -------: | -------- | ---------: |
+| USDC市占率趋势（D1） | 25% | — | 待Q1财报后更新 | — |
+| USDT相对威胁（D2） | 15% | — | | — |
+| 分销渠道议价（D3） | 20% | — | | — |
+| 收益型稳定币蚕食（D4） | 15% | — | | — |
+| 链生态健康（D5） | 10% | — | | — |
+| 监管壁垒（D6） | 10% | — | | — |
+| 平台化验证（D7） | 5% | — | | — |
+| **加权总分** | 100% | **—** | | — |
+
+> Q1 2026财报（2026-05-11）发布后，按 `metrics/05-competition-scoring-rubric.md` 逐维度打分并填入上表。
+
+## 评分历史追踪
+
+每周打分完成后在下方追加一行记录，不覆盖旧行。
+
+| 周次 | 日期 | 总分 | USDC市占（D1） | USDT威胁（D2） | 分销议价（D3） | 收益竞品（D4） | 链生态（D5） | 监管（D6） | 平台化（D7） | 主要变化事件 |
+| ---- | ---- | ---: | ------------: | ------------: | ------------: | ------------: | ----------: | ---------: | ----------: | ------------ |
+
+### 总分档位标注规则
+
+| 总分区间 | 标注 | 动作 |
+| -------: | ---- | ---- |
+| 75-100 | 🟢 强化档 | 可上调平台化权重 |
+| 55-74 | 🟡 中性档 | 维持框架，等财报验证 |
+| 40-54 | 🟠 预警档 | 暂停上调估值倍数 |
+| 0-39 | 🔴 危险档，触发Bear条件审查 | 重算增长率、RLDC 和长期倍数 |
+
+追加格式示例：
+```
+| W21 | 2026-05-15 | 57.5 | 50 | 50 | 75 | 50 | 75 | 50 | 50 | Q1财报验证RLDC margin 40.3% | 🟡 中性档 |
+```
+
+## 与 validation-matrix 的校验绑定
+
+### 执行时机
+
+每周完成打分并填写评分历史追踪后，执行 `metrics/06-validation-matrix.md` 第二层（周报→财报）中涉及竞争评分的条目：
+
+| 检查编号 | 检查内容摘要 | 关联维度 |
+| -------- | ------------ | -------- |
+| WE-02 | D3分销渠道议价档位须与RLDC margin档位一致 | D3 |
+| WE-03 | D4收益型稳定币蚕食档位须与Other revenue趋势方向一致 | D4 |
+| WE-04 | D7平台化验证档位须与Other revenue share档位一致 | D7 |
+| WE-06 | competition score总分档位须与RLDC margin情景一致 | 总分 |
+| WE-07 | 分销成本率判断须与distribution cost弹性方向一致 | D3 |
+
+### 不一致时的处理规则
+
+若本文件 competition score 的各维度判断与 `framework/03-competition.md` 的结论不一致，按 `metrics/06-validation-matrix.md` 的"发现不一致时的处理流程"执行：
+1. 以 SEC filing / Circle 官方数据为裁定优先级最高来源
+2. 在本文件对应行添加"已修正 YYYY-MM-DD，原值 X"
+3. 同步更新 `metrics/06-validation-matrix.md` 检查记录
+
+连续 3 周发现同一维度不一致，升级为系统性口径问题，修正来源 SOP。
