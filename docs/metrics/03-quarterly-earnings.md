@@ -90,6 +90,43 @@ Adjusted EBITDA margin =
 动作：
 ```
 
+## 财报后更新优先级清单
+
+财报发布后按以下顺序更新，不要等"全部看完"再动笔。
+
+### T+0（财报发布当天）：只更新事实
+
+| 优先级 | 文件 | 更新内容 | 操作规则 |
+| ------ | ---- | -------- | -------- |
+| 第 1 步 | `metrics/03-quarterly-earnings.md` | 计算表填入实际数值 | 只填数字，不写结论 |
+| 第 2 步 | `framework/01-business-model.md` | FY/季度核心事实表 | 更新 RLDC、margin、Other revenue 实际值 |
+| 第 3 步 | `metrics/04-competition-dashboard.md` | RLDC margin 行 | 季度数据唯一更新时机 |
+
+T+0 不写结论。只填事实数字，等电话会结束后再判断。
+
+### T+24h（财报次日）：完成结论层
+
+| 优先级 | 文件 | 更新内容 | 触发条件 |
+| ------ | ---- | -------- | -------- |
+| 第 4 步 | `metrics/03-quarterly-earnings.md` | 十项财务复核、财报结论模板、Q1 2026 预期差对比 | 必须完成，不可省略 |
+| 第 5 步 | `valuation/01-scenario-model.md` | 情景输出模板 | 如果矩阵共振触发情景升降级 |
+| 第 6 步 | `valuation/00-valuation-framework.md` | 目标价计算模板 | 每季度强制更新一次 |
+| 第 7 步 | `risk/00-risk-map.md` | 信用层触发条件复核 | RLDC margin <38% 或 competition score 变化时 |
+
+### T+48h（电话会后）：更新叙事层
+
+| 优先级 | 文件 | 更新内容 | 触发条件 |
+| ------ | ---- | -------- | -------- |
+| 第 8 步 | `framework/04-platform-option.md` | CPN、Arc 最新进展 | 管理层给出新数据或时间表 |
+| 第 9 步 | `framework/02-regulation.md` | 监管口径变化 | 管理层提到 GENIUS Act 或分销协议影响 |
+| 第 10 步 | `valuation/00-valuation-framework.md` | 倍数区间更新 | 情景切换或管理层上修/下修指引 |
+
+### 强制执行规则
+
+- 不因市场反应改变基本面结论顺序，先数字后叙事。
+- 管理层只强调叙事、不披露口径时，对应项写 `missing_info`，不填乐观推断。
+- 未完成 T+0 步骤前，不做任何仓位操作。
+
 ## Q1 2026 特别检查
 
 Q1 2026 财报发布日期为 2026-05-11。
