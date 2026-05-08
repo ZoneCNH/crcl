@@ -137,3 +137,105 @@ P2 指标每项 ±1 分
 ```
 
 综合评分不触发情景切换。情景切换必须满足 `valuation/01-scenario-model.md` 的矩阵共振条件。
+
+---
+
+## 新增（2026-05-08）
+
+## P0/P1 指标自动告警条件表
+
+### P0 指标告警条件（10 项）
+
+| 指标 | 当前值基准 | 告警阈值（升） | 告警阈值（降） | 数据源 | 刷新频率 |
+| ---- | --------- | ------------ | ------------ | ------ | -------- |
+| USDC circulating supply | Q4 2025 末 ~753 亿美元 | 7D+30D 同时增长；突破 800 亿 | 连续 2 周净赎回为负；7D+30D 同跌 | Circle Transparency | 每日 |
+| 7D / 30D / 365D change | 参照 Q4 2025 末水平 | 7D 与 30D 同向上升 | 7D 与 30D 同时下降 | Circle Transparency | 每日 |
+| Minted / Redeemed | 季度净发行为正 | 发行量连续高于赎回量 | 赎回连续 2-4 周高于发行 | Circle Transparency | 每日 |
+| Net mint / redeem | 参照近 4 周均值 | 连续 2 周以上为正值 | 连续 2-4 周为负 → 触发减仓检查 | Circle Transparency | 每日 |
+| 3M T-Bill yield | ~4.2-4.5%（Q4 2025 水平） | 上行 > 25 bps（储备收入支撑） | 下行 > 50 bps（单季收入影响 > 2%） | Treasury / FRED | 每日 |
+| SOFR | 参照 3M T-Bill 方向 | 同向上行 | 30 日均值低于 3.5% | NY Fed | 每日 |
+| Circle Reserve Fund 7-day yield | ~4.0-4.5%（Q4 2025 水平） | > 5.0% | < 3.0% | BlackRock fund page | 每日 |
+| BTC / ETH price | 参照近期均价 | 双资产同时大涨（风险偏好强） | 双资产同时大跌 > 10% | CoinGecko / TradingView | 每日 |
+| CRCL price / volume | 参照近期均价 | 放量突破关键阻力位 | 放量跌破关键支撑位 | Yahoo Finance / 交易软件 | 每日 |
+| 监管公告 | 无新规则生效 | 非银行路径清晰；收益分享不受限 | 第三方激励被认定为变相 yield | Congress / OCC / Treasury | 事件触发 |
+
+### P1 指标告警条件（10 项）
+
+| 指标 | 当前值基准 | 告警阈值（升） | 告警阈值（降） | 数据源 | 刷新频率 |
+| ---- | --------- | ------------ | ------------ | ------ | -------- |
+| USDC market cap share | ~25-27%（Q4 2025 估） | 月度变化 > +1.5 ppts | 月度变化 > -1.5 ppts 或连续 4 周下降 | DefiLlama / CoinGecko | 每周 |
+| USDC / USDT ratio | ~0.25-0.30（Q4 2025 估） | 比值连续上升 4 周 | 比值连续下降 4 周 | DefiLlama / CoinGecko | 每周 |
+| Stablecoin total market cap | 参照季末总盘规模 | 总市值创历史新高 | 连续 4 周萎缩 > 5% | DefiLlama | 每周 |
+| USDC by chain | 参照各链季末余额 | Base / Ethereum / Solana 同增 | 任意主链连续 4 周下降 > 5% | Dune / TokenTerminal | 每周 |
+| USDC transfer volume | 参照近 4 周均值 | 量价同增（流通量 + 转账量双升） | 转账量连续 4 周下降 | Dune / CoinMetrics | 每周 |
+| Adjusted transfer volume | 参照清洗后近 4 周均值 | 清洗后量增且活跃地址同增 | 清洗后量连续下降 | CoinMetrics / Dune | 每周 |
+| Active addresses | 参照季末活跃地址数 | 连续 4 周创新高 | 连续 4 周下降 > 10% | Dune / Santiment | 每周 |
+| Velocity | 参照近期均值 | 周转率提升且活跃地址同增 | 周转率持续下降 | 自算 | 每周 |
+| Exchange balances | 参照季末交易所余额 | 交易所余额大幅增加（交易 beta 强） | 交易所余额持续流出 > 10% | Nansen / TokenTerminal | 每周 |
+| DeFi protocol deposits | 参照季末 DeFi 存量 | 存量大幅增加（Aave / Compound） | 连续 4 周净流出 | DefiLlama / Aave / Compound | 每周 |
+
+### 补充：框架关键临界值（衍生指标）
+
+以下临界值来自框架多处引用，不在上表 P0/P1 分层，但优先级等同 P1 告警：
+
+| 衍生指标 | 告警条件 | 数据来源 | 触发动作 |
+| -------- | -------- | -------- | -------- |
+| Reserve return rate（年化，÷ Average USDC） | < 3.0% 或 > 5.0% | SEC 10-Q 自算 | < 3.0%：触发收入下修；> 5.0%：确认降息未传导 |
+| RLDC margin（主） | < 38% | SEC 10-Q 自算 | 已有；见 metrics/03 决策树；减仓 15 ppts |
+| Competition score（来自 metrics/04） | 穿越 75 或 40 分边界 | metrics/04-competition-dashboard.md | > 75：加仓 +5 ppts；< 40：减仓 10-15 ppts |
+
+---
+
+## 扩展指标（新增 3 项）
+
+### 指标1：合规成本比率
+
+| 字段 | 内容 |
+| ---- | ---- |
+| 定义 | 合规及风控成本 ÷ 储备总收入（Reserve income） |
+| 计算 | SEC 10-Q 运营费用中 compliance / legal 相关科目之和 ÷ Reserve income |
+| 数据来源 | SEC 10-Q 运营费用明细（compliance、legal、regulatory affairs 相关科目） |
+| 告警阈值 | > 2%：触发分销经济性重算（与 RLDC margin 联动）；环比上升 > 0.5 ppts：标记监管成本压力 |
+| 更新频率 | 季度（财报发布后 T+24h 完成） |
+| 优先级 | P2 |
+| 与框架联动 | 告警时更新 framework/02-regulation.md 合规成本折价项；重新检查 RLDC margin 是否受成本推高影响 |
+
+### 指标2：链上技术可用性
+
+| 字段 | 内容 |
+| ---- | ---- |
+| 定义 | USDC 主要部署链（Base、Ethereum、Solana）的在线状态与故障时长 |
+| 计算 | 各链官方 status 页面故障事件记录；以"连续故障小时数"为量化单位 |
+| 数据来源 | Base Status（status.base.org）、Solana Status（status.solana.com）、Circle 博客公告 |
+| 告警阈值 | 任一主链故障 > 4 小时：触发流动性风险评估；Base 故障 > 2 小时：额外触发 CPN 中断检查 |
+| 更新频率 | P0（事件触发，实时监控） |
+| 优先级 | P0 |
+| 与框架联动 | 触发 risk/00-risk-map.md 技术风险项；故障超 24 小时需更新 framework/04-platform-option.md Arc 可用性记录 |
+
+### 指标3：Coinbase 渠道集中度
+
+| 字段 | 内容 |
+| ---- | ---- |
+| 定义 | Coinbase 平台 USDC 余额 ÷ USDC 总流通量（估算值） |
+| 计算 | Coinbase 10-Q 披露 "USDC on platform" ÷ Circle 透明度报告 USDC 总流通量 |
+| 数据来源 | Coinbase 10-Q（USDC on platform 科目）+ Circle 月度透明度报告 |
+| 告警阈值 | > 35%：触发渠道集中度预警（分销依赖风险上升）；< 20%：触发 Base 增长质量复核（Coinbase 以外增长是否可持续） |
+| 更新频率 | P1（季度精确值，月度估算值） |
+| 优先级 | P1 |
+| 与框架联动 | 超过 35% 时更新 valuation/00-valuation-framework.md 渠道折价项；结合 risk/00-risk-map.md 渠道依赖风险 |
+
+---
+
+## 指标版本记录
+
+### v1.1 — 2026-05-08 更新
+
+| 变更类型 | 内容 |
+| -------- | ---- |
+| 新增章节 | P0/P1 指标自动告警条件表（P0 10 项 + P1 10 项 + 3 项框架关键临界值） |
+| 新增章节 | 扩展指标：合规成本比率（P2）、链上技术可用性（P0）、Coinbase 渠道集中度（P1） |
+| 补充依据 | framework/02-regulation.md 合规成本背景；risk/00-risk-map.md 技术风险与渠道风险 |
+| 重点告警 | USDC 市占率月度变化 > ±1.5% 告警；储备收益率 < 3.0% 或 > 5.0% 告警；竞争评分穿越 75/40 告警（来自 metrics/04） |
+| 指标总计 | P0：10 项（原有）+ 1 项扩展（链上技术可用性）= 11 项；P1：10 项（原有）+ 1 项扩展（Coinbase 渠道集中度）= 11 项；P2：11 项（原有）+ 1 项扩展（合规成本比率）= 12 项 |
+
+自检提示：下次季度自检时，对照本版本记录确认各告警阈值是否需要随市场环境调整。
