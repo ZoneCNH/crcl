@@ -66,6 +66,28 @@ OFAC 是 Office of Foreign Assets Control，白话就是美国制裁名单和制
 | 偏空   | 第三方激励被认定为变相 yield                   | 重新计算 Coinbase 等渠道经济性 |
 | 强空   | 银行稳定币获得更低成本优势                     | 企业支付和机构结算倍数下修     |
 
+## Autoresearch 监管复核矩阵
+
+监管 56 次微实验落成一个规则：每条监管判断必须同时写清楚条款、来源、状态和动作。
+
+| 监管项             | 复核来源                     | CRCL 判断焦点                     | 动作                           |
+| ------------------ | ---------------------------- | --------------------------------- | ------------------------------ |
+| PPSI path          | Congress、OCC NPRM、最终规则 | 非银行合规发行路径是否清晰        | 清晰则强化合规壁垒             |
+| state issuer path  | Congress、OCC NPRM、最终规则 | 州级路径是否降低小发行人门槛      | 只在最终规则明确后调整竞争假设 |
+| reserve asset rule | Congress、OCC NPRM、最终规则 | 储备资产范围是否压缩收益          | 改变储备收益率假设             |
+| capital requirement | Congress、OCC NPRM、评论期   | 资本要求是否提高运营成本          | 上调合规成本折价               |
+| disclosure rule    | Congress、OCC NPRM、评论期   | 披露是否提高透明发行人优势        | 强化或削弱合规溢价             |
+| audit requirement  | Congress、OCC NPRM、合规成本 | 审计要求是否压缩尾部发行人        | 观察市占率是否转化             |
+| interest ban       | Congress、OCC NPRM、最终规则 | 是否限制直接收益支付              | 保留为 P0 监管项               |
+| yield workaround   | Congress、OCC NPRM、最终规则 | 第三方激励是否被视为变相 yield    | 触发渠道经济性重算             |
+| nonbank issuer     | Congress、OCC NPRM、最终规则 | Circle 路径是否优于银行路径       | 调整监管壁垒判断               |
+| bank advantage     | Congress、OCC NPRM、合规成本 | 银行是否获得低成本企业入口        | 下修企业支付倍数               |
+
+NPRM 是 Notice of Proposed Rulemaking，白话就是拟议规则，还不是最终规则。
+
+最终规则没有发布前，所有监管结论必须保留状态标签。
+禁止把评论期变化当成已生效规则。
+
 ## 关键问题
 
 每次监管更新必须回答：

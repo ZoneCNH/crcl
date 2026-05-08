@@ -104,6 +104,42 @@ Base USDC 增长
 
 变相 yield 是绕开规则支付收益，白话就是不叫利息但经济效果像利息。
 
+## Autoresearch 渠道议价矩阵
+
+渠道与 Coinbase 100 次微实验落成一个规则：供应增长必须和利润留存一起看。
+
+| 复核对象             | 必查证据                                      | 负向动作                         |
+| -------------------- | --------------------------------------------- | -------------------------------- |
+| Coinbase 分成压力    | RLDC margin、Coinbase filing、收入分成        | 重算 Coinbase 经济性             |
+| Binance 渠道贡献     | 渠道余额、合作方披露、监管限制                | 降低新增渠道质量评分             |
+| Base 生态绑定        | Base 链数据、Base USDC supply、RLDC margin    | 判定为生态内循环                 |
+| USDC on Platform 占比 | 财报问答、渠道余额、分销协议                  | 上调渠道集中度风险               |
+| 第三方钱包激励       | 监管口径、USDC rewards、合作方披露            | 触发变相 yield 检查              |
+| 交易所余额质量       | 交易所余额、交易深度、稳定币市占率            | 标记为低质量迁移                 |
+| 渠道集中度           | Coinbase custody、wallet flow、user growth    | 提高分销折价                     |
+| 分销成本率           | Distribution and transaction costs、RLDC margin | 低于阈值时暂停上调倍数           |
+| 合作方垂直整合       | Base fee capture、ecosystem lock-in           | 评估利润是否被合作方截留         |
+| 分销协议变化         | SEC filing、财报问答、监管限制                | 进入 P0 或 P1 事件复核           |
+
+Coinbase filing 是 Coinbase 披露文件，白话就是用合作方自己的财报和监管文件反查 Circle 的渠道风险。
+
+## Autoresearch 稳定币竞争矩阵
+
+稳定币竞争 50 次微实验落成一个规则：竞争不是只看市值，要看份额、收益迁移和机构替代。
+
+| 竞争项                  | 复核来源                         | 动作规则                         |
+| ----------------------- | -------------------------------- | -------------------------------- |
+| USDT dominance          | DefiLlama、CoinGecko、交易所深度 | 上升且 USDC 份额下降时降级       |
+| PYUSD / FDUSD growth    | DefiLlama、CoinGecko、链上使用   | 只在份额迁移明确时纳入 P2        |
+| USDe AUM                | DefiLlama、RWA.xyz、DeFi 借贷    | 伴随 USDC 净赎回时列入 P1        |
+| BUIDL / USDY / USYC AUM | RWA.xyz、机构公告                | 抢闲置美元时下修现金管理叙事     |
+| bank stablecoin         | 银行公告、OCC / FDIC             | 获得企业客户时下调企业支付倍数   |
+| tokenized deposits      | FDIC、银行试点、企业采用         | 替代受监管账户余额时提高折价     |
+| stablecoin total market | DefiLlama、CoinGecko             | 总盘扩张但 USDC 不增时视为弱增长 |
+| exchange liquidity      | 交易所 API、Kaiko                | USDC 深度下降时削弱交易场景权重  |
+
+FDIC 是 Federal Deposit Insurance Corporation，白话就是美国存款保险机构。
+
 ## Binance 和其他交易所：增量入口但议价不透明
 
 Binance、钱包、做市商和其他交易所能带来流通量，但经济性不如官方供应数据直观。
