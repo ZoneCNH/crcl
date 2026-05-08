@@ -222,6 +222,44 @@ USDC by chain 必须拆用途。
 
 Agentic commerce 是代理式商业，白话就是 AI agent 或自动化程序参与支付和交易。
 
+## 支付公司竞争：Stripe、Shopify、Amazon Pay
+
+CPN 和 Arc 的真实竞争场景不只是稳定币对稳定币，还包括现有支付公司的替代风险。
+
+### 为何需要将支付公司纳入竞争范围
+
+支付公司不发行稳定币，但直接争夺 CRCL 的商业化场景：
+
+- **企业跨境结算**：Stripe Treasury、Shopify Balance、Amazon Pay 已提供低摩擦法币支付；CPN 要争夺的是同一批企业客户。
+- **API 支付基础设施**：Stripe 是 API 驱动支付的标杆。Circle 的企业 API 和 CPN 定位高度重叠。
+- **嵌入式金融**：Shopify 对中小商户的嵌入式支付锁定，与 Arc 的目标生态存在竞争。
+
+### 与支付公司的竞争判断框架
+
+| 竞争维度 | CRCL 优势 | CRCL 劣势 | 竞争判断 |
+| -------- | --------- | --------- | -------- |
+| 合规与监管 | GENIUS Act 稳定币框架提供差异化合规路径 | 银行和支付公司有现成合规体系，新规对 CRCL 成本负担更大 | 中性，视最终规则细则 |
+| 跨境速度 | 稳定币 24/7 结算，无对应节假日延迟 | 法币轨道已有 SWIFT gpi、RTP 等提速工具 | 对 CRCL 偏有利，但窗口收窄 |
+| 客户获取 | 加密原生企业、DeFi 协议、Web3 公司 | Stripe/Shopify 对 Web2 企业客户的覆盖更广 | CRCL 短期在 Web3 场景有优势 |
+| 费率竞争 | 稳定币结算成本理论上更低 | Stripe/Shopify 有规模效应，可接受更低利润率 | 长期不确定 |
+| API 开发者体验 | Circle API 有一定开发者基础 | Stripe 是 API 体验的行业基准，生态成熟 | Stripe 明显领先 |
+
+### 支付公司纳入竞争评分的规则
+
+支付公司事件不直接影响 competition_score，但触发以下情况时需更新框架：
+
+| 触发事件 | 影响层级 | 动作 |
+| -------- | -------- | ---- |
+| Stripe 或 Shopify 宣布稳定币支付集成 | 支付网络竞争层（CPN 直接竞争） | 重新评估 CPN TPV 增长潜力，降低支付网络层分数 |
+| Amazon Pay 宣布稳定币或 CBDC 兼容 | 企业结算心智竞争 | 降低 regulated enterprise adoption 分数 |
+| Stripe Treasury 或 Shopify Balance 大规模扩张 | 法币替代 CPN 场景 | 追问 CPN 差异化定位，检查 Other revenue 是否受影响 |
+| 大型支付公司推出自有稳定币 | 全竞争层 | 升级为 P0/P1 监控，触发框架自检 |
+
+### 监控频率
+
+支付公司纳入每季度竞争复盘，不进入每周数据更新范围。
+每季度财报后检查一次 Stripe、Shopify 的支付量和产品动态。
+
 ## 支付网络竞争：CPN 和 Arc 的对手不只是稳定币
 
 CPN 和 Arc 的竞争对手包括银行、卡组织、跨境支付网络、企业财资系统、钱包和 L2 生态。
