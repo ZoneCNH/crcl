@@ -72,6 +72,14 @@ AUM 是 Assets Under Management，白话就是管理资产规模。
 | -------- | -------- | -------- |
 | 2026-05-08（初始建立） | 无 | 全部来源核验有效 |
 
+## 数据获取执行规格
+
+各来源的具体获取步骤（URL、操作顺序、备用源、告警触发）已整理至：
+
+→ **`superpowers/specs/data-collection-sop.md`**
+
+包含 11 个数据源的 SOP（Circle Transparency、DefiLlama、Treasury、Dune Analytics、SEC EDGAR、OCC/Congress/FinCEN 等）及每周操作日历。
+
 ## 核验纪律
 
 1. 财务数字以 SEC filing 和 Circle earnings release 为准。

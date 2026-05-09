@@ -23,7 +23,9 @@ CRCL 的研究主线不是“稳定币公司”四个字，而是五个判断：
 6. `playbook/00-research-routine.md`：按日、周、季执行。
 7. `playbook/02-competition-review.md`：按竞争维度做专项复盘。
 8. `autoresearch/00-loop.md`：用固定循环继续迭代研究框架。
-9. `sources.md`：最后核对官方来源。
+9. `superpowers/plans/`：高影响事件预建响应剧本（Arc主网、GENIUS Act最终规则）。
+10. `superpowers/specs/data-collection-sop.md`：各数据来源的具体获取SOP。
+11. `sources.md`：最后核对官方来源。
 
 ## 目录职责
 
@@ -36,6 +38,7 @@ CRCL 的研究主线不是“稳定币公司”四个字，而是五个判断：
 | `playbook/`     | 研究流程、决策模板、复盘格式               |
 | `autoresearch/` | 1000 次微迭代日志、目标函数、保留/丢弃规则 |
 | `archive/`      | 原始文档归档，不作为最新结论               |
+| `superpowers/`  | 战略情景预案（plans/）与数据获取规格（specs/） |
 | `sources.md`    | 官方来源索引和核验优先级                   |
 
 ## Autoresearch 矩阵入口
