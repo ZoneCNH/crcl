@@ -1,0 +1,7 @@
+{
+  "tool_name": "mcp__plugin_ecc_github__create_repository",
+  "tool_input_preview": "{\"name\":\"crcl\",\"description\":\"CRCL - 量化研究与策略框架\",\"private\":false,\"autoInit\":false}",
+  "error": "MCP error -32603: Authentication Failed: Requires authentication",
+  "timestamp": "2026-06-13T03:11:48.180Z",
+  "retry_count": 1
+}
