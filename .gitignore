@@ -20,6 +20,7 @@ profile.cov
 # Dependency directories (remove the comment below to include it)
 # vendor/
 node_modules/
+target/
 
 # Go workspace file
 go.work
@@ -35,4 +36,5 @@ go.work.sum
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db
+data/*.sqlite*
 .beads-credential-key

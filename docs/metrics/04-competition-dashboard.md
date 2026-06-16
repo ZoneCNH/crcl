@@ -135,24 +135,24 @@ competition score：
 
 ```text
 competition score =
-  25% USDC relative share
-  + 20% distribution economics
-  + 15% chain usage quality
-  + 15% regulated enterprise adoption
-  + 10% yield-product leakage
-  + 10% bank/tokenized deposit pressure
-  + 5% stock and options crowding
+  25% × D1（USDC 市占率趋势）
+  + 15% × D2（USDT 相对威胁）
+  + 20% × D3（分销渠道议价）
+  + 15% × D4（收益型稳定币蚕食）
+  + 10% × D5（链生态健康）
+  + 10% × D6（监管壁垒）
+  + 5%  × D7（平台化验证）
 ```
 
-| 维度                            | 权重 | 本周分数 | 证据                                                      | 动作 |
-| ------------------------------- | ---: | -------: | --------------------------------------------------------- | ---- |
-| USDC relative share             |  25% |          | USDC market share、USDC / USDT ratio                      |      |
-| distribution economics          |  20% |          | RLDC margin、Base USDC、Coinbase products USDC            |      |
-| chain usage quality             |  15% |          | adjusted transfer volume、active addresses、USDC by chain |      |
-| regulated enterprise adoption   |  15% |          | CPN TPV、企业客户、银行稳定币事件                         |      |
-| yield-product leakage           |  10% |          | USDe、BUIDL、USDY、USYC AUM                               |      |
-| bank/tokenized deposit pressure |  10% |          | FDIC/OCC/银行公告、tokenized deposits 试点                |      |
-| stock and options crowding      |   5% |          | short interest、IV、lock-up、Form 4                       |      |
+| 维度 | 权重 | 本周分数 | 证据 | 动作 |
+| ---- | ---: | -------: | ---- | ---- |
+| D1 USDC 市占率趋势 | 25% | | USDC market share、USDC / USDT ratio | |
+| D2 USDT 相对威胁 | 15% | | USDT dominance、USDT 事件 | |
+| D3 分销渠道议价 | 20% | | RLDC margin、分销成本率、Base USDC、Coinbase products USDC | |
+| D4 收益型稳定币蚕食 | 15% | | USDe、BUIDL、USDY、USYC AUM、USDC net mint/redeem | |
+| D5 链生态健康 | 10% | | adjusted transfer volume、active addresses、borrow 利用率 | |
+| D6 监管壁垒 | 10% | | GENIUS Act、OCC/FDIC/Treasury、银行稳定币事件 | |
+| D7 平台化验证 | 5% | | Other revenue share、CPN TPV、Arc 主网、short interest、IV | |
 
 > 两人分差≥15分时执行 `metrics/05-competition-scoring-rubric.md` 对账流程。
 
@@ -231,15 +231,15 @@ competition score =
 competition score：
 本周最强证据：
 本周最弱证据：
-USDC relative share：
-distribution economics：
+D1 USDC 市占率趋势：
+D2 USDT 相对威胁：
+D3 分销渠道议价：
+D4 收益型稳定币蚕食：
+D5 链生态健康：
+D6 监管壁垒：
+D7 平台化验证：
 渠道议价矩阵：
-chain usage quality：
-regulated enterprise adoption：
-yield-product leakage：
 稳定币竞争矩阵：
-bank/tokenized deposit pressure：
-stock and options crowding：
 结论：
 动作：
 missing_info：
@@ -250,13 +250,13 @@ missing_info：
 
 ## 新增（2026-05-08）
 
-## 当前评分基准（2026-05-08）
+## 运行时评分基准
 
-本表记录最新一次正式打分结果，每次打分后覆盖更新。维度定义与档位条件详见 `metrics/05-competition-scoring-rubric.md`。
+本表记录本次刷新后的最新正式打分结果，每次打分后覆盖更新。维度定义与档位条件详见 `metrics/05-competition-scoring-rubric.md`。不得把历史样例分数当作当前分数。
 
 | 维度 | 权重 | 本周得分 | 依据摘要 | 较上周变化 |
 | ---- | ---: | -------: | -------- | ---------: |
-| USDC市占率趋势（D1） | 25% | — | 待Q1财报后更新 | — |
+| USDC市占率趋势（D1） | 25% | — | 运行时刷新后填写 | — |
 | USDT相对威胁（D2） | 15% | — | | — |
 | 分销渠道议价（D3） | 20% | — | | — |
 | 收益型稳定币蚕食（D4） | 15% | — | | — |
@@ -265,7 +265,7 @@ missing_info：
 | 平台化验证（D7） | 5% | — | | — |
 | **加权总分** | 100% | **—** | | — |
 
-> Q1 2026财报（2026-05-11）发布后，按 `metrics/05-competition-scoring-rubric.md` 逐维度打分并填入上表。
+> 每次周度复盘或事件触发后，按 `metrics/05-competition-scoring-rubric.md` 逐维度打分并填入上表。
 
 ## 评分历史追踪
 
@@ -284,8 +284,9 @@ missing_info：
 | 0-39 | 🔴 危险档，触发Bear条件审查 | 重算增长率、RLDC 和长期倍数 |
 
 追加格式示例：
-```
-| W21 | 2026-05-15 | 57.5 | 50 | 50 | 75 | 50 | 75 | 50 | 50 | Q1财报验证RLDC margin 40.3% | 🟡 中性档 |
+
+```text
+| W__ | YYYY-MM-DD | __ | __ | __ | __ | __ | __ | __ | __ | 运行时证据摘要 | 档位 |
 ```
 
 ## 与 validation-matrix 的校验绑定
@@ -305,6 +306,7 @@ missing_info：
 ### 不一致时的处理规则
 
 若本文件 competition score 的各维度判断与 `framework/03-competition.md` 的结论不一致，按 `metrics/06-validation-matrix.md` 的"发现不一致时的处理流程"执行：
+
 1. 以 SEC filing / Circle 官方数据为裁定优先级最高来源
 2. 在本文件对应行添加"已修正 YYYY-MM-DD，原值 X"
 3. 同步更新 `metrics/06-validation-matrix.md` 检查记录

@@ -51,16 +51,16 @@ Gas 是链上交易费，白话就是发起交易要付的网络费用。
 
 ```text
 competition score =
-  25% USDC relative share
-  + 20% distribution economics
-  + 15% chain usage quality
-  + 15% regulated enterprise adoption
-  + 10% yield-product leakage
-  + 10% bank/tokenized deposit pressure
-  + 5% stock and options crowding
+  25% × D1（USDC 市占率趋势）
+  + 15% × D2（USDT 相对威胁）
+  + 20% × D3（分销渠道议价）
+  + 15% × D4（收益型稳定币蚕食）
+  + 10% × D5（链生态健康）
+  + 10% × D6（监管壁垒）
+  + 5%  × D7（平台化验证）
 ```
 
-distribution economics 是分销经济性，白话就是 Coinbase、Binance、钱包等渠道带来增长后，Circle 自己能留下多少收入。
+逐档打分标准以 `metrics/05-competition-scoring-rubric.md` 为准。周报只记录本周证据、分数和动作，不重新定义评分口径。
 
 | 分数   | 结论         | 动作                        |
 | ------ | ------------ | --------------------------- |
@@ -127,10 +127,10 @@ Arc 的主网、客户、费用模型和收入贡献必须分别确认。
 
 每周一（或复盘开始时）填写本周预期，周末对照实际结果。目标是在数据出来之前先锚定预期，避免用结果反推叙事。
 
-```
+```text
 本周预期（周一填）：
 - USDC供应变化预期：+/- X%（依据：上周趋势 / 季节性因素）
-- 储备收益率预期：~X%（依据：5Y Treasury当前值）
+- 储备收益率预期：~X%（依据：5Y Treasury 运行时值）
 - 主要竞争事件预期：是/否（依据：已知事件日历）
 - 预期差阈值：USDC变化偏离>0.5%即记录原因
 
@@ -153,7 +153,7 @@ Arc 的主网、客户、费用模型和收入贡献必须分别确认。
 
 当距离季度财报 ≤14天时，周报进入"财报倒计时模式"，在常规周报模板基础上新增以下检查项。
 
-**当前状态：距Q1 2026财报还有3天（2026-05-11），已进入倒计时模式。**
+倒计时模式不是长期当前状态。每次运行时先查询 Circle IR / SEC EDGAR 的最新财报日程；只有距离下一次已公告财报小于等于 14 天时，才进入倒计时模式。
 
 ### 新增每日检查项
 
@@ -166,9 +166,9 @@ Arc 的主网、客户、费用模型和收入贡献必须分别确认。
 
 | 日期 | 检查项 |
 | ---- | ------ |
-| 2026-05-09 | Circle IR官网检查；SEC EDGAR 8-K检查 |
-| 2026-05-10 | Circle IR官网 + EDGAR 8-K；机构预期收集（如有analyst coverage） |
-| 2026-05-11（财报日） | T+0直接执行 `metrics/03-quarterly-earnings.md` 财报处理决策树；如已创建则同步执行 `metrics/07-q1-2026-earnings-preview.md` |
+| T-2 | Circle IR官网检查；SEC EDGAR 8-K检查 |
+| T-1 | Circle IR官网 + EDGAR 8-K；机构预期收集（如有 analyst coverage） |
+| T+0（财报日） | T+0直接执行 `metrics/03-quarterly-earnings.md` 财报处理决策树；如已创建则同步执行当季 earnings preview 文件 |
 
 ### 财报倒计时模式退出条件
 

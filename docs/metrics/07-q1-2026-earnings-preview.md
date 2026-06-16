@@ -1,16 +1,19 @@
 # Q1 2026 财报预期文件
 
-更新日期：2026-05-08 | 财报日期：2026-05-11
+文档版本日期：2026-05-08 | 历史财报日期：2026-05-11
+
+> 本文件是 Q1 2026 财报前的历史预期样本，不是运行时当前事实。若用于后续季度，必须新建当季 preview，并先从 SEC EDGAR / Circle IR / Circle pressroom 刷新财报日期、最新 filing、电话会材料和关键阈值。
 
 ---
 
 ## 1. 执行摘要
 
-**财报日期**：2026-05-11
+**历史财报日期**：2026-05-11
 
 **核心判断问题**：Q1 2026 的 RLDC margin 能否维持 40% 以上，同时 Other revenue 追上 FY2026 年化指引节奏（≥3,500 万/季），从而确认 Circle 仍在 Base case 而非向 Bear 滑落？
 
-**当前情景基准**：**Base case**
+**历史情景基准**：**Base case**
+
 - 依据：Q4 2025 RLDC margin 约 42%（来源：`../framework/01-business-model.md` Q4 2025 核心事实表），FY2025 全年 41%，均高于 38% 告警线；USDC 流通量 Q4 期末 753 亿，同比增长 72%；Other revenue 占比 ~4%，仍处利差股定价阶段，平台化期权价值未兑现但未恶化；无 C-TRIGGER 触发。
 - Base 反证：若 RLDC margin 跌破 38% 或 Other revenue 低于 3,000 万且 FY2026 指引下修，框架向 Bear 滑落。
 
@@ -45,7 +48,7 @@
 | 5 | **USDC 增长来源：交易、DeFi、支付、企业结算各占比？是否有 Base 链渠道内循环 vs 外部新增的拆分？** | 财务矩阵 + 竞争矩阵 | 影响 average USDC 增长质量判断（RLDC margin 分支 3：Base 增长但总市占率不升属渠道内循环，不支持估值上修）；影响预警信号 13 |
 | 6 | **FY2026 Other revenue 指引：维持 1.5–1.7 亿，还是上修/下修？** | 财务矩阵 | 影响 Other revenue 阈值判断（<1.5 亿下沿即触发平台化失效复核）；影响 `../valuation/01-scenario-model.md` Other revenue 假设（Base 1.6 亿） |
 | 7 | **储备收益率展望：Q2 2026 的降息预期传导速度？WAM（加权平均久期）有无调整？** | 财务矩阵 | 影响 `../valuation/00-valuation-framework.md` 利率敏感度矩阵；确认 Q2 Base 储备收益率假设是否需要下修 |
-| 8 | **Coinbase USDC 持有比例（来自 Coinbase Q1 2026 财报）是否变化？管理层是否提及渠道议价情况？** | 财务矩阵 + 竞争矩阵 | 影响预警信号 7 量化阈值（超 30% + RLDC margin 降 >2 ppts 联动）；影响 `../framework/01-business-model.md` Coinbase 占比假设（当前约 25%） |
+| 8 | **Coinbase USDC 持有比例（来自 Coinbase Q1 2026 财报）是否变化？管理层是否提及渠道议价情况？** | 财务矩阵 + 竞争矩阵 | 影响预警信号 7 量化阈值（超 30% + RLDC margin 降 >2 ppts 联动）；影响 `../framework/01-business-model.md` Coinbase 占比假设（历史样本约 25%，运行时需刷新） |
 | 9 | **竞争：USDT、银行稳定币（tokenized deposits）、USDe 等对 USDC 市占率的影响？管理层如何回应？** | 竞争矩阵 | 影响预警信号 3（市占率下降）和信号 16（银行稳定币采用）；影响 `../metrics/04-competition-dashboard.md` competition score 更新 |
 | 10 | **锁定期及股权结构：是否有解禁计划更新？内部人 Form 4 近期有无集中减持信号？** | 筹码与事件矩阵 | 影响仓位加减因子（见 `../valuation/00-valuation-framework.md` 仓位管理规则）；锁定期解禁规模 >10% 流通量触发 P2 减仓 −5–10 ppts |
 
@@ -53,26 +56,26 @@
 
 ## 4. 情景触发条件快核
 
-> 来源：`../valuation/01-scenario-model.md`（Bull/Base/Bear 触发条件 + 情景切换表）；当前状态基于截至 2026-05-08 已知数据
+> 来源：`../valuation/01-scenario-model.md`（Bull/Base/Bear 触发条件 + 情景切换表）；下表状态基于 2026-05-08 历史已知数据，仅作 Q1 预案样本
 
-| 情景 | 触发条件 | Q1 财报可核？ | 判断方式 | 当前状态（2026-05-08） |
+| 情景 | 触发条件 | Q1 财报可核？ | 判断方式 | 历史状态（2026-05-08） |
 |-----|---------|------------|---------|----------------------|
-| **Bull** | ① RLDC margin 稳在 40% 以上 | ✅ 可核 | SEC 10-Q 自算：RLDC ÷ Reserve income | Q4 2025 约 42%，持续性待 Q1 确认 |
+| **Bull** | ① RLDC margin 稳在 40% 以上 | ✅ 可核 | SEC 10-Q 自算：RLDC ÷ Reserve income | Q4 2025 约 42%，当时待 Q1 确认 |
 | **Bull** | ② Other revenue 超过 FY2026 指引上沿（>4,250 万/季） | ✅ 可核 | SEC 10-Q：Subscription and service fees | Q4 2025 为 3,700 万，尚低于上沿 |
 | **Bull** | ③ USDC 30D change 持续为正 | ✅ 可核 | Circle Transparency 净铸造/销毁数据 | Q4 2025 末 753 亿，趋势待确认 |
 | **Bull** | ④ USDC 市占率连续 4 周上升 | ⚠️ 部分可核 | DefiLlama 周快照（非财报披露） | 需链上数据，财报不直接披露 |
-| **Bull** | ⑤ CPN TPV 与收入同步增长 | ⚠️ 部分可核 | 需管理层披露具体数字；Other revenue 财报可核但子项不一定拆分 | 2026-02-20 年化 TPV 约 57 亿，Q1 更新待确认 |
+| **Bull** | ⑤ CPN TPV 与收入同步增长 | ⚠️ 部分可核 | 需管理层披露具体数字；Other revenue 财报可核但子项不一定拆分 | 历史披露：2026-02-20 年化 TPV 约 57 亿，当时待 Q1 更新确认 |
 | **Bull** | ⑥ Arc 主网按期落地并披露客户案例 | ✅ 可核（公告） | 管理层公告 + SEC filing | 尚无主网宣布，延期风险存在 |
 | **Bull** | ⑦ 监管最终规则未实质压制分销激励 | ⚠️ 部分可核 | OCC/Treasury 规则仍在征询阶段（拟议规则 2026-02-25 & 2026-04-08），最终规则未发布 | 征询期，尚无最终规则；管理层措辞可参考 |
 | **Base** | ① RLDC margin 维持 38–40% | ✅ 可核 | SEC 10-Q 自算 | Q4 2025 约 42%，处 Bull/Base 边界以上 |
 | **Base** | ② Other revenue 达到 FY2026 1.5–1.7 亿年化节奏 | ✅ 可核 | SEC 10-Q（Q1 季度值 × 4 年化）；Q1 基准 3,500–4,000 万 | Q4 2025 为 3,700 万，基本在轨 |
 | **Base** | ③ USDC 随稳定币总盘增长，市占率横盘 | ⚠️ 部分可核 | DefiLlama 周快照，非 10-Q 直接披露 | 需链上数据持续确认 |
-| **Base** | ④ CPN/Arc 有进展但收入贡献不清晰 | ✅ 可核 | 管理层电话会量化信息；Other revenue 财报值 | 当前状态：使用量增长，收入未单独拆分 |
-| **Bear** | ① RLDC margin 下滑（< 38%） | ✅ 可核 | SEC 10-Q 自算（决策树节点①） | 当前高于阈值；Q1 需重新确认 |
+| **Base** | ④ CPN/Arc 有进展但收入贡献不清晰 | ✅ 可核 | 管理层电话会量化信息；Other revenue 财报值 | 历史状态：使用量增长，收入未单独拆分 |
+| **Bear** | ① RLDC margin 下滑（< 38%） | ✅ 可核 | SEC 10-Q 自算（决策树节点①） | 历史状态高于阈值；Q1 需重新确认 |
 | **Bear** | ② OCC/Treasury 最终规则限制第三方激励 | ❌ Q1 不可核 | 最终规则未发布，需等后续监管流程 | 仍在征询阶段，拟议规则 2026-04-08 |
 | **Bear** | ③ USDC 连续 2–4 周净赎回 | ✅ 可核 | Circle Transparency 日更数据；10-Q 期末 USDC | 需实时监控，Q1 末值从财报可核 |
 | **Bear** | ④ competition score 低于 40 | ❌ Q1 不可核 | 需 7 维度评分完整更新（含链上数据、竞争对手财报） | 需等竞争对手财报（Coinbase 等）后更新 |
-| **情景切换规则** | 单一指标不触发情景切换；需多矩阵共振 | — | 财务强化+竞争强化+平台化中验证→Bull；任意两项（财务降级/竞争恶化/监管压制/平台化失败）→Bear | 当前情景：**Base**，无切换信号 |
+| **情景切换规则** | 单一指标不触发情景切换；需多矩阵共振 | — | 财务强化+竞争强化+平台化中验证→Bull；任意两项（财务降级/竞争恶化/监管压制/平台化失败）→Bear | 历史情景：**Base**，无切换信号 |
 
 ---
 
@@ -166,7 +169,7 @@
 | 第 3 步（T+0） | `../metrics/04-competition-dashboard.md` | RLDC margin 行（季度数据唯一更新时机） | 季度数据行 |
 | 第 4 步（T+24h） | `../metrics/03-quarterly-earnings.md` | 十项财务复核完整填写；财报结论模板；Q1 2026 预期差对比（本文件第 2 节 vs 实际） | 必须完成，不可省略 |
 | 第 5 步（T+24h，如情景升降级） | `../valuation/01-scenario-model.md` | 情景输出模板；Bull/Base/Bear 触发条件复核 | 仅矩阵共振触发情景切换时更新 |
-| 第 6 步（T+24h，强制） | `../valuation/00-valuation-framework.md` | 目标价计算模板；稀释股数从 Q1 2026 10-Q 更新 | 每季度强制更新一次 |
+| 第 6 步（T+24h，强制） | `../valuation/00-valuation-framework.md` | 目标价计算模板；稀释股数从当季 10-Q / 10-K 更新 | 每季度强制更新一次 |
 | 第 7 步（T+24h，条件） | `../risk/00-risk-map.md` | 信用层触发条件复核 | RLDC margin < 38% 或 competition score 变化时 |
 | 第 8 步（T+48h） | `../framework/04-platform-option.md` | CPN TPV / Arc 时间表最新进展 | 管理层给出新数字或时间表 |
 | 第 9 步（T+48h） | `../framework/02-regulation.md` | 监管口径变化（GENIUS Act / OCC / BSA/AML 拟议规则管理层表态） | 管理层有新表态时 |
@@ -181,7 +184,7 @@
 - **背景**：GENIUS Act 已于 2025-07-18 成为 Public Law No. 119-27；OCC 已于 **2026-02-25** 发布拟议规则；Treasury / FinCEN / OFAC 已于 **2026-04-08** 发布稳定币 BSA/AML 与制裁合规拟议规则。
 - **Q1 特有风险**：Q1 2026（1 月–3 月）处于 OCC 拟议规则征询期（2026-02-25 发布，征询截止日期待确认）和 Treasury/FinCEN 规则（2026-04-08 发布，约 60 天征询期）重叠窗口。管理层对**最终规则是否限制第三方分销激励**的表态，将直接影响 RLDC margin 长期假设。
 - **Q1 财报判断规则**：若管理层明确表示规则"中性或有利"→ 维持 Base；若表示"需要调整分销激励结构"→ 触发预警信号 6，下修 RLDC margin 假设至 30–35%，暂停平台化期权估值。
-- **来源参照**：`../framework/02-regulation.md`；`../docs/README.md` 当前研究基准
+- **来源参照**：`../framework/02-regulation.md`；`../README.md` 运行时研究基准
 
 ### 风险 2：Q1 2026 平均 5Y Treasury 收益率与储备收益率传导
 
@@ -191,9 +194,9 @@
 
 ### 风险 3：Coinbase 分销协议是否有到期/续签可能
 
-- **背景**：Coinbase 是最大 USDC 分销渠道，Q1 2026 基准占总流通量约 25%（来源 Coinbase Q1 2026 10-Q）。若协议有续签谈判，分销成本率可能出现跳变。
+- **背景**：Coinbase 是最大 USDC 分销渠道，Q1 2026 历史基准占总流通量约 25%（来源 Coinbase Q1 2026 10-Q）。复用本模板时必须改为对应季度的最新 Coinbase filing。若协议有续签谈判，分销成本率可能出现跳变。
 - **Q1 特有风险**：Coinbase 自身业务扩张（包括 Base 链生态增长）可能增强议价权；若 Coinbase 持有 USDC 占比超过 30%（信号 7 量化阈值），需重点追问是否存在协议条款变化。
-- **判断规则**：Coinbase Q1 2026 财报（约 2026-05-08 前后）披露 USDC 持有量后，与 Circle 财报联动判断。若 Coinbase 持有超 30% + Circle RLDC margin 同比降 >2 ppts → 预警信号 7 触发（见 `../risk/01-warning-signals.md`）。
+- **历史判断规则**：Coinbase Q1 2026 财报（约 2026-05-08 前后）披露 USDC 持有量后，与 Circle 财报联动判断。若 Coinbase 持有超 30% + Circle RLDC margin 同比降 >2 ppts → 预警信号 7 触发（见 `../risk/01-warning-signals.md`）。复用到未来季度时，需改用对应季度 Coinbase filing。
 
 ### 风险 4：Other revenue 增速是否追上 FY2026 指引节奏
 
@@ -202,7 +205,7 @@
 
 ### 风险 5：IPO 后锁定期解禁筹码压力
 
-- **背景**：CRCL IPO 后，通常 6 个月后锁定期到期；截至 2026-05-08，需从 S-1/Prospectus 确认具体解禁日期（见 `../docs/README.md` IPO 后股权结构表）。
+- **背景**：CRCL IPO 后，通常 6 个月后锁定期到期；历史 Q1 样本在 2026-05-08 仍需从 S-1/Prospectus 确认具体解禁日期（见 `../README.md` IPO 后股权结构表）。运行时必须查最新 S-1、424B、Form 4 和 13F。
 - **Q1 特有风险**：若锁定期在 Q2 2026 初（约 2026-04 至 05 月）到期，财报发布恰好临近解禁窗口，可能叠加解禁筹码压力。短期内多位高管连续减持需触发 P0 预警（预警信号 12）。
 - **注意**：筹码信号独立于情景判断，只调仓位（−5–10 ppts），不修改估值倍数或情景框架。
 
@@ -210,11 +213,11 @@
 
 ## 7. 框架自检触发
 
-财报后必须执行框架自检（触发条件：**每季度财报后强制自检**）。来源：`../docs/README.md` 框架自检 SOP。
+财报后必须执行框架自检（触发条件：**每季度财报后强制自检**）。来源：`../README.md` 框架自检 SOP。
 
 ```text
 自检日期：（财报后 T+24h 填写）
-触发原因：Q1 2026 财报发布（2026-05-11），每季度强制触发
+触发原因：本次刷新到的当季财报发布（填写最新财报日期），每季度强制触发
 
 检查项：（逐项填写）
   业务模式假设（../framework/01-business-model.md）：
@@ -237,7 +240,7 @@
   目标价倍数（../valuation/00-valuation-framework.md）：
     Market cap / RLDC 倍数区间是否仍与可比公司匹配？
     （Bear 8-12× / Base 15-22× / Bull 25-40×）
-    稀释股数是否已从 Q1 2026 10-Q 更新（当前：[待从最新 10-Q 获取]）？
+    稀释股数是否已从最新 10-Q / 10-K 更新（运行时刷新后填写）？
     有变化 / 无变化，说明：
 
   风险优先级（../risk/00-risk-map.md）：
@@ -252,7 +255,7 @@
   需更新文件：（填写 T+48h 更新清单中已触发的文件）
   需新建任务：
 
-下次自检触发：Q2 2026 财报后（预计 2026-08 月）或情景切换时
+下次自检触发：下一次已公告财报后（运行时从 Circle IR / SEC EDGAR 刷新日期）或情景切换时
 ```
 
 ---
@@ -266,7 +269,7 @@
 | 估值框架 | 情景参数表（Bear/Base/Bull）、利率敏感度矩阵（降息传导矩阵）、倍数区间、仓位加减因子表 | `../valuation/00-valuation-framework.md` |
 | 情景模型 | Bull/Base/Bear 触发条件、情景切换表、Other revenue 子项假设拆分、利率敏感度矩阵（2026-05-08 补充） | `../valuation/01-scenario-model.md` |
 | 预警信号 | 16 条预警信号量化阈值、分销成本率基准 ~63%、赎回级别定义、组合触发条件 | `../risk/01-warning-signals.md` |
-| 研究框架入口 | 当前研究基准（截至 2026-05-08）、框架自检 SOP 及输出模板、IPO 后股权结构与锁定期时间表 | `../docs/README.md`（即 `/home/crcl/docs/README.md`）|
+| 研究框架入口 | 运行时研究基准、框架自检 SOP 及输出模板、IPO 后股权结构与锁定期时间表 | `../README.md` |
 | 决策输出模板 | 财报结论输出格式 | `../playbook/01-decision-template.md` |
 
 > 所有外部数据（实际财报数值、Coinbase 10-Q USDC 持有量、BlackRock USDXX 基金收益率）须在财报发布后 T+0 当晚从 SEC EDGAR 和官方页面获取，不从本文件外推。

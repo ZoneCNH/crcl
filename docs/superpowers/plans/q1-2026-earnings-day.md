@@ -1,22 +1,26 @@
 # Q1 2026 财报日战术手册
 
-更新日期：2026-05-09 | 财报日：2026-05-11 | 类型：单次事件执行脚本
+文档版本日期：2026-05-09 | 历史财报日：2026-05-11 | 类型：历史事件脚本 / 财报日模板
 
 > 本文件是 `../../metrics/07-q1-2026-earnings-preview.md` 的执行提炼版。
-> 预览文件是"背景与预期"，本文件是"明天怎么做"。
+> 本文件保留 Q1 2026 当时的 T+0/T+24h 执行顺序，不代表当前仍处于财报前夜。复用到未来财报时，第一步必须先从 SEC EDGAR / Circle IR 刷新财报日期、filing 类型、电话会时间和阈值。
 
 ---
 
-## 出发前核对（财报发布前）
+## 运行时核对（复用本模板时先刷新）
 
-**Circle Q1 2026 财报发布时间**：2026-05-11（美东时间盘后，约 16:00–17:30 ET）
+**历史 Q1 2026 财报发布时间（仅作样本）**：2026-05-11（美东时间盘后，约 16:00-17:30 ET）
 
 **发布渠道（按优先级）**：
+
 1. SEC EDGAR：`efts.sec.gov` 搜索 Circle Internet Group 10-Q
 2. Circle IR：`investor.circle.com/news`
 3. Circle pressroom：`circle.com/pressroom`
 
+复用到任意新财报时，先写明本次刷新到的最新 filing 日期和来源链接，再继续执行下方步骤。
+
 **财报前禁止**：
+
 - 禁止根据提前流出的"消息"调仓
 - 禁止把 Coinbase Q1 2026 财报（如已发布）的 USDC 数字当作 Circle RLDC 结论
 
@@ -27,8 +31,9 @@
 ### T+0（财报发布后 30 分钟内）
 
 **第一步：找到 10-Q 原文**
+
 - SEC EDGAR → 搜索"Circle Internet Group" → 最新 10-Q → 下载 PDF 或 HTM
-- 确认 filing 日期为 2026-05-11，不是历史 filing
+- 确认 filing 日期等于本次从 SEC EDGAR / Circle IR 刷新的财报日期，不是历史 filing
 
 **第二步：五项优先数字（按顺序抄录）**
 
@@ -42,9 +47,9 @@
 | 6 | MD&A 或 Supplemental → Average USDC in circulation | ___亿美元 | < 760 亿警戒 | ☐ |
 | 7 | MD&A → Reserve return rate / average reserve yield | __._% | < 3.3% + USDC增速<15%联动 | ☐ |
 
-**第三步：10 秒判断当前情景**
+**第三步：10 秒判断本次情景**
 
-```
+```text
 RLDC margin ≥ 40% + Other revenue ≥ 3,500万 → 维持 Base，Bull 条件部分满足，待电话会
 RLDC margin 38-40% + Other revenue ≥ 3,000万 → 维持 Base 下沿，无切换，观察
 RLDC margin < 38% → ⚠️ 立即进入 Bear 检查流程（见下）
@@ -56,14 +61,17 @@ Other revenue < 3,000万 → 停止平台化溢价，等电话会确认是否指
 ### T+0（30–90 分钟，电话会前）
 
 **第四步：抄录稀释股数**
+
 - 10-Q 封面 → "Shares outstanding"，记录日期和数量
 - 更新 `../../valuation/00-valuation-framework.md` 稀释股数版本记录表
 
 **第五步：检查管理层 press release**
+
 - 通常在 10-Q 同时发布，附在 8-K 中（exhibit 99.1）
 - 提取：管理层对 FY2026 Other revenue 指引是否有变化（维持 1.5–1.7 亿 / 上修 / 下修）
 
 **第六步：预判电话会关键追问**
+
 - 根据五项数字，标记哪 3 个问题最重要（从 `../../metrics/07-q1-2026-earnings-preview.md` 第3节10题中选）
 
 ---
@@ -88,7 +96,7 @@ Other revenue < 3,000万 → 停止平台化溢价，等电话会确认是否指
 
 **第七步：综合判断**
 
-```
+```text
 情景判断（选一个）：
   ☐ 维持 Base case → 无仓位变动，更新文件
   ☐ 升级至 Bull → [需全部 Bull 条件中多少项满足？] → 等更多数据（不在T+3h立即切换）
@@ -126,7 +134,8 @@ Other revenue < 3,000万 → 停止平台化溢价，等电话会确认是否指
 `../../autoresearch/01-iteration-log.md`（追加一条迭代记录，编号继续）
 
 **第十步：竞争评分更新**
-- 等 Coinbase Q1 2026 财报（如尚未发布，等发布后执行）
+
+- 等 Coinbase 对应季度财报（如尚未发布，等发布后执行）
 - 使用 `../../metrics/05-competition-scoring-rubric.md` 更新 7 维度评分
 - 结果记录到 `../../metrics/04-competition-dashboard.md`
 
@@ -136,7 +145,7 @@ Other revenue < 3,000万 → 停止平台化溢价，等电话会确认是否指
 
 > 仅在 RLDC margin < 38% 时执行
 
-```
+```text
 T+0 立即：
   1. 停止所有追加买入
   2. 执行 ../../risk/02-failure-conditions.md 失效复核矩阵

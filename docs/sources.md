@@ -6,12 +6,14 @@ CRCL 框架只把官方来源作为最终事实锚。
 
 二级数据平台用于监控，不用于覆盖财报、监管文件和公司正式披露。
 
+本文件是来源入口，不是事实快照。大模型每次运行时必须重新访问或核验下列来源；表中的历史日期和旧链接只说明曾经使用过，不代表当前仍然最新。
+
 ## 公司与财务来源
 
 | 来源                            | 链接                                                                                                            | 用途                                             |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | Circle FY2025 / Q4 2025 results | `https://www.circle.com/en/pressroom/circle-reports-fourth-quarter-and-full-fiscal-year-2025-financial-results` | FY2025、Q4 2025 财务与经营指标                   |
-| Circle Q1 2026 results date     | `https://www.circle.com/pressroom/circle-to-announce-q1-2026-financial-results-on-may-11-2026`                  | Q1 2026 财报日期                                 |
+| Circle pressroom / earnings archive | `https://www.circle.com/pressroom`                                                                            | 最新财报公告、历史财报公告、事件公告             |
 | Circle investor events          | `https://investor.circle.com/events-and-presentations/default.aspx`                                             | earnings call、webcast、投资者材料               |
 | Circle Transparency             | `https://www.circle.com/transparency`                                                                           | USDC 流通量、储备透明度                          |
 | SEC EDGAR                       | `https://www.sec.gov/edgar/search/`                                                                             | 10-K、10-Q、Form 4、S-1、13F                     |
@@ -31,7 +33,7 @@ earnings call 是财报电话会，白话就是管理层解释财报并回答分
 | FDIC GENIUS Act proposed rule          | `https://www.fdic.gov/news/press-releases/2026/fdic-approves-proposal-implement-genius-act-requirements-and-standards` | FDIC-supervised PPSI、tokenized deposits、储备存款保险口径 |
 | Federal Reserve                        | `https://www.federalreserve.gov/newsevents.htm`                                                                        | Fed 对稳定币、支付、银行监管表态                           |
 | SEC newsroom                           | `https://www.sec.gov/newsroom`                                                                                         | 证券监管、执法和披露规则                                   |
-| CFTC pressroom                         | `https://www.cftc.gov/PressRoom/PressReleases`                                                                         | 商品监管和执法动态                                         |
+| CFTC RSS                               | `https://www.cftc.gov/rss.xml`                                                                                         | 商品监管和执法动态                                         |
 
 NPRM 是 Notice of Proposed Rulemaking，白话就是监管机构发布草案并征求意见。
 
@@ -62,15 +64,17 @@ AUM 是 Assets Under Management，白话就是管理资产规模。
 | -------- | -------- | -------- | ---- |
 | Circle pressroom / investor relations | 访问页面确认内容是否当前版本 | 页面 404 或内容已过期 | 搜索 Circle 官网最新链接替换 |
 | SEC EDGAR | EDGAR search 搜索公司 CIK 号（1876042）查最新 filing | 链接指向旧 filing | 换用 EDGAR 搜索入口，不用硬链接 |
-| OCC / Treasury / Congress | 访问确认页面状态和文件日期 | 规则状态变化（如 NPRM → Final Rule） | 更新链接并在"当前已核验事实"中标注新状态 |
+| OCC / Treasury / Congress | 访问确认页面状态和文件日期 | 规则状态变化（如 NPRM → Final Rule） | 更新链接并在"运行时事实刷新清单"和来源检查记录中标注新状态 |
 | DefiLlama / CoinGecko / Dune | 访问页面确认数据仍在更新 | 数据停更超 30 天 | 换用替代来源，或在使用时标注"数据截至 YYYY-MM-DD" |
 | RWA.xyz | 同上 | 同上 | 同上 |
 
-### 最近检查记录
+### 来源检查记录
 
 | 检查日期 | 发现问题 | 处理结果 |
 | -------- | -------- | -------- |
-| 2026-05-08（初始建立） | 无 | 全部来源核验有效 |
+| 2026-05-08（历史快照） | 无 | 初始建档时全部来源核验有效 |
+
+每次框架自检或重大事件复核时，需要追加新的检查记录。禁止用上表历史记录证明当前来源仍有效。
 
 ## 数据获取执行规格
 
@@ -88,12 +92,14 @@ AUM 是 Assets Under Management，白话就是管理资产规模。
 4. 媒体报道只能作为线索，不能作为最终结论。
 5. 每个关键事实必须带日期，避免把旧规则当成当前规则。
 
-## 当前已核验事实
+## 运行时事实刷新清单
 
-截至 2026-05-08：
+以下项目每次运行前刷新。若无法刷新，必须标记 `missing_info`：
 
-- Circle FY2025 / Q4 2025 results 已发布，来源为 Circle pressroom 和 SEC exhibit。
-- Q1 2026 results 发布日期为 2026-05-11，来源为 Circle pressroom。
-- GENIUS Act 于 2025-07-18 成为 Public Law No. 119-27，来源为 Congress.gov。
-- OCC 于 2026-02-25 发布 GENIUS Act 拟议规则，来源为 OCC。
-- Treasury / FinCEN / OFAC 于 2026-04-08 发布 BSA/AML 与制裁合规拟议规则，来源为 Treasury。
+| 事实类型 | 刷新动作 | 输出要求 |
+| -------- | -------- | -------- |
+| 最新财报 | 查 SEC EDGAR 最新 10-Q / 10-K / 8-K，并与 Circle IR 对照 | 写明 filing 类型、filing 日期、核心数字来源 |
+| 最新 USDC 供应 | 查 Circle Transparency，并用 DefiLlama / CoinGecko 交叉验证异常值 | 写明数据日期、7D/30D、net mint/redeem |
+| 最新监管状态 | 查 Congress、OCC、Treasury、FinCEN、OFAC、FDIC | 区分法律、拟议规则、最终规则、评论期和媒体线索 |
+| 最新竞争数据 | 查 DefiLlama、CoinGecko、CoinMetrics、Dune、RWA.xyz | 写明快照日期和口径，偏差超阈值填 `missing_info` |
+| 最新筹码数据 | 查 SEC Form 4 / 13F、FINRA short interest | 只影响仓位纪律，不直接改基本面情景 |

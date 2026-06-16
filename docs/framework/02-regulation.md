@@ -180,6 +180,7 @@ Coinbase 是分销伙伴，也是议价对手。
 影响逻辑：合规成本上升 → 分销成本率上升 → RLDC margin 被压缩。
 
 使用规则：
+
 1. 最终规则发布前，默认使用中性（基准）情景。
 2. OCC 或 Treasury 最终规则发布后，T+24h 内按触发条件判断切换档位。
 3. 严格情景触发时，同步触发 P0 预警，暂停基于当前 RLDC margin 的目标价计算。
@@ -190,7 +191,7 @@ Coinbase 是分销伙伴，也是议价对手。
 
 核心问题：GENIUS Act "禁止向持有人支付 interest / yield" 是否影响 Coinbase 的 USDC 奖励/返利模式？
 
-#### Coinbase 当前奖励模式
+#### Coinbase 奖励模式（运行时刷新）
 
 Coinbase 向 USDC 持有者支付奖励，奖励资金来源于 Circle 向 Coinbase 支付的分成（distribution costs）。问题在于：这笔奖励经济性是否构成"向持有人支付利息"？
 
@@ -228,6 +229,7 @@ Coinbase 向 USDC 持有者支付奖励，奖励资金来源于 Circle 向 Coinb
 | 持续 | Congress | GENIUS Act 后续修订提案 | 重点关注"yield"定义条款；任何修订草案立即比对解释B | congress.gov |
 
 监听纪律：
+
 1. 拟议规则评论期内的意见不作为已生效依据，只作为方向信号。
 2. 最终规则必须在 T+24h 内完成三档情景切换判断。
 3. 媒体报道监管进展只作为线索，必须用官方来源确认后才更新框架。

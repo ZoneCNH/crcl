@@ -16,9 +16,9 @@
 - **预期时间窗口**：2026 Q3（基于 `../../framework/02-regulation.md` 监管事件监听日历）
 - **来源确认**：Federal Register（federalregister.gov）+ OCC 官网（occ.gov）+ Treasury 官网（home.treasury.gov）三源同步确认
 
-当前基准状态（来源 `../../framework/02-regulation.md`）：
+运行时基准状态（执行前从 Federal Register、OCC、Treasury、FinCEN、FDIC 刷新；下表为历史待核模板）：
 
-| 机构 | 当前状态 | 预期下一步 |
+| 机构 | 运行时状态 | 预期下一步 |
 |------|---------|-----------|
 | OCC | GENIUS Act 拟议规则（NPRM）已发布（2026-02-25） | 评论期截止后发布最终规则 |
 | Treasury/FinCEN | BSA/AML 拟议规则已发布（2026-04-08） | 2026 Q3 评论期截止后最终规则 |

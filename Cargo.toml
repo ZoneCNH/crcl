@@ -1,0 +1,19 @@
+[package]
+name = "crcl_data_collector"
+version = "0.1.0"
+edition = "2024"
+description = "CRCL research data collector with SQLite storage"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0"
+chrono = { version = "0.4", features = ["clock", "serde"] }
+clap = { version = "4.5", features = ["derive", "env"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "native-tls", "http2", "charset", "gzip", "brotli", "deflate", "zstd"] }
+roxmltree = "0.20"
+rusqlite = { version = "0.32", features = ["bundled"] }
+scraper = "0.22"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.43", features = ["macros", "rt-multi-thread"] }
+url = "2.5"
