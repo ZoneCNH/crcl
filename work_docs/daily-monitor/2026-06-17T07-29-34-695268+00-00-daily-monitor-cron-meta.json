@@ -1,0 +1,15 @@
+{
+  "task": "daily",
+  "workflow": "daily-monitor",
+  "category": "daily-monitor",
+  "started_at": "2026-06-17T07:29:34.695268+00:00",
+  "root_dir": "/Users/zj/sync_disk/zjSync/量化/crcl",
+  "output_dir": "/Users/zj/sync_disk/zjSync/量化/crcl/work_docs/daily-monitor",
+  "output_last_message": "/Users/zj/sync_disk/zjSync/量化/crcl/work_docs/daily-monitor/2026-06-17T07-29-34-695268+00-00-daily-monitor-codex-final.md",
+  "event_log": "/Users/zj/sync_disk/zjSync/量化/crcl/work_docs/daily-monitor/2026-06-17T07-29-34-695268+00-00-daily-monitor-codex-events.jsonl",
+  "no_collect": false,
+  "safe_mode": false,
+  "completed_at": "2026-06-17T07:40:58.207457+00:00",
+  "exit_status": 0,
+  "signal": null
+}

@@ -1,25 +1,25 @@
 # CRCL 数据源完整清单
 
-生成日期：2026-06-15
+生成日期：2026-06-16
 
 ## 结论
 
 本项目需要的数据源分成五类：市场与链上、利率与储备、SEC 财务披露、事件与监管、技术状态。
 
-当前自动采集器已经覆盖大部分公开可自动化来源，并落到 `data/crcl_research.sqlite`。截至本次只读检查：
+当前自动采集器已经覆盖大部分公开可自动化来源，并落到 `data/crcl_research.sqlite`。本次把原“后续补齐”里的 CPN、Arc、机构持仓和 Other revenue share 改为可自动解析；Exchange USDC balances 已从 Glassnode 切到 CoinGlass 公开 API，但该 API 需要 `COINGLASS_API_KEY`。
 
-- `collection_batches=4`
-- `source_runs=103`
-- `observations=308`
+- `collection_batches=8`
+- `source_runs=152`
+- `observations=618`
 - `filings=184`
 - `events=18`
 - `missing_items=1`
 
-当前唯一仍在 `missing_items` 的自动化缺口是：
+当前仍可能留在 `missing_items` 的自动化缺口是：
 
 | 优先级 | 指标 | 当前问题 | 来源 |
 | --- | --- | --- | --- |
-| P1 | `P1_EXCHANGE_USDC_BALANCES` / Exchange USDC balances | Glassnode Studio 返回 HTTP 403；curl fallback 也未拿到可解析页面 | `https://studio.glassnode.com/charts/distribution.BalanceExchanges?a=USDC` |
+| P1 | `P1_EXCHANGE_USDC_BALANCES` / Exchange USDC balances | 已改用 CoinGlass Exchange Balance List；官方文档确认支持 `USDC`，但无 `CG-API-KEY` 时接口返回 `API key missing` | `https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC` |
 
 ## 状态说明
 
@@ -75,7 +75,7 @@
 | USDC transfer count | CoinMetrics Community API | 同上 | 已落库 | `observations`：`P1_USDC_TRANSFER_COUNT` |
 | USDC adjusted transfer value 交叉验证 | CoinMetrics Pro / Dune | CoinMetrics Pro；`https://dune.com` | 部分 | 主自动源已改用 Visa / Allium；CoinMetrics Community API 对 `TxTfrValAdjUSD` 需要付费凭证 |
 | USDC velocity | Circle SEC filing；Dune / CoinMetrics Pro 周度 adjusted 口径 | Circle SEC filings；`https://dune.com` | 部分 | filing-period velocity 已从 Circle filing 落库：`P1_USDC_VELOCITY`；周度 adjusted velocity 未自动化 |
-| Exchange USDC balances | Glassnode / Nansen / TokenTerminal | `https://studio.glassnode.com/charts/distribution.BalanceExchanges?a=USDC`；Glassnode API / Nansen / TokenTerminal | 失败 | 当前 `P1_EXCHANGE_USDC_BALANCES` 失败：HTTP 403；需要 API key 或替代源 |
+| Exchange USDC balances | CoinGlass Exchange Balance List | `https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC`；文档入口 `https://docs.coinglass.com/reference/exchange-balance-list` | 需凭证 | `observations`：`P1_EXCHANGE_USDC_BALANCES`；公开 API 支持 USDC，但需环境变量 `COINGLASS_API_KEY` |
 | Aave V3 USDC deposits | DefiLlama protocol API | `https://api.llama.fi/protocol/aave-v3` | 已落库 | `observations`：协议总额和链级拆分 |
 | Compound V3 USDC deposits | DefiLlama protocol API | `https://api.llama.fi/protocol/compound-v3` | 已落库 | `observations`：协议总额和链级拆分 |
 | Aave + Compound aggregate USDC deposits | DefiLlama protocol API | `https://api.llama.fi/protocol/aave-v3`；`https://api.llama.fi/protocol/compound-v3` | 已落库 | `observations`：`P1_DEFI_PROTOCOL_USDC_DEPOSITS` |
@@ -87,7 +87,7 @@
 | Ondo USDY market cap | CoinGecko | CoinGecko simple price API | 已落库 | `observations`：`P1_COMPETITOR_USDY_MARKET_CAP` |
 | Tokenized Treasury AUM | RWA.xyz | `https://app.rwa.xyz/treasuries`；官方 API 备选 `https://api.rwa.xyz/v4/assets` + `RWA_API_KEY` | 已落库 | `observations`：`P1_TOKENIZED_TREASURY_AUM` |
 | BlackRock BUIDL AUM | RWA.xyz | `https://app.rwa.xyz/treasuries` | 已落库 | `observations`：`P1_TOKENIZED_TREASURY_BUIDL_AUM` |
-| CPN TPV | Circle earnings disclosure / investor materials | `https://investor.circle.com/events-and-presentations/default.aspx`；SEC filings | 未自动化 | 数据库当前无 `CPN` / `TPV` 相关 observation；财报后若披露，需要结构化录入 |
+| CPN TPV | Circle earnings disclosure / pressroom | `https://www.circle.com/pressroom/circle-reports-first-quarter-2026-results` | 已落库 | `observations`：`P1_CPN_ANNUALIZED_TPV`；Q1 2026 pressroom 披露 trailing 30 day annualized TPV |
 | Bank stablecoin events | OCC / FDIC / bank releases | OCC、FDIC、银行新闻稿 | 已访问 | OCC / FDIC 页面已 source check；银行个体新闻稿未系统化 |
 | Tokenized deposits events | FDIC / bank releases | `https://www.fdic.gov/news/press-releases/`；银行公告 | 已访问 | FDIC 页面已 source check；具体银行事件仍需人工或后续事件解析 |
 
@@ -100,17 +100,18 @@
 | Circle RLDC | 自算，基于 SEC filing | 同上 | 已落库 | `observations`：`P2_CIRCLE_RLDC` |
 | Circle RLDC margin | 自算，基于 SEC filing | 同上 | 已落库 | `observations`：`P2_CIRCLE_RLDC_MARGIN` |
 | Circle other revenue | SEC 10-Q / 10-K | 同上 | 已落库 | `observations`：`P2_CIRCLE_OTHER_REVENUE` |
-| Circle other revenue share | 自算，基于 SEC filing | 同上 | 未自动化 | 当前有 Other revenue 和 total revenue，可补派生指标 |
+| Circle other revenue share | 自算，基于 SEC filing | 同上 | 已落库 | `observations`：`P2_CIRCLE_OTHER_REVENUE_SHARE`；由 Other revenue / total revenue and reserve income 派生 |
 | Circle adjusted EBITDA | SEC 10-Q / 10-K | 同上 | 已落库 | `observations`：`P2_CIRCLE_ADJUSTED_EBITDA`、`P2_CIRCLE_ADJUSTED_EBITDA_MARGIN` |
 | Circle total revenue and reserve income | SEC 10-Q / 10-K | 同上 | 已落库 | `observations`：`P2_CIRCLE_TOTAL_REVENUE_AND_RESERVE_INCOME` |
 | Circle USDC average / end-period circulation | SEC 10-Q / 10-K | 同上 | 已落库 | `observations`：`P2_CIRCLE_USDC_IN_CIRCULATION_AVG_PERIOD`、`P2_CIRCLE_USDC_IN_CIRCULATION_END_PERIOD` |
 | Circle onchain transaction volume | SEC 10-Q / 10-K | 同上 | 已落库 | `observations`：`P1_USDC_ONCHAIN_TRANSACTION_VOLUME` |
+| CRCL basic / diluted / common shares | SEC 10-Q / 10-K inline XBRL | 同上 | 已落库 | `observations`：`P2_CRCL_BASIC_SHARES_OUTSTANDING`、`P2_CRCL_DILUTED_SHARES_OUTSTANDING`、`P2_CRCL_SHARES_OUTSTANDING` |
 | Coinbase distribution exposure | Circle / Coinbase SEC filings | Circle CIK `0001876042`；Coinbase CIK `0001679788` | 已落库 | Coinbase stablecoin revenue、USDC on platform、client custodial funds 等已落库；精确渠道分成仍依赖披露口径 |
-| CPN TPV / customer count / fee model | Circle disclosure / earnings call | Circle IR、SEC 8-K、10-Q、earnings materials | 未自动化 | 当前只检查 Circle IR 页面；没有自动提取电话会或演示稿里的 CPN 数字 |
-| Arc mainnet timing / usage / fee model | Circle blog / developer docs / SEC disclosure | Circle 官网、Circle docs、SEC filings | 未自动化 | 当前数据库无 Arc 相关 observation；测试网数据也不应直接当收入 |
+| CPN TPV / customer count / fee model | Circle disclosure / earnings call | Circle IR、SEC 8-K、10-Q、earnings materials；Q1 2026 pressroom | 部分 | TPV 已自动提取；客户数、收费模式仍需 transcript / presentation 或人工标注 |
+| Arc mainnet timing / usage / fee model | Arc 官网；Circle pressroom | `https://www.arc.io/`；兜底 `https://www.circle.com/pressroom/circle-reports-fourth-quarter-and-full-fiscal-year-2025-financial-results` | 部分 | `observations`：Arc public network / mainnet status、testnet daily average transactions、total transactions；测试网数据不应直接当收入 |
 | Reserve Fund WAM / WAL | SEC N-MFP3 / BlackRock | `https://data.sec.gov/submissions/CIK0000844779.json` | 已落库 | `observations`：`P2_RESERVE_FUND_WAM`、`P2_RESERVE_FUND_WAL` |
 | Insider selling / Form 4 | SEC EDGAR | `https://data.sec.gov/submissions/CIK0001876042.json`；`https://data.sec.gov/submissions/CIK0001679788.json` | 已落库 | `filings`：Circle / Coinbase Form 4 元数据；交易方向/金额深度解释未结构化 |
-| Institutional ownership / 13F | SEC EDGAR | SEC EDGAR 13F；company / fund filings | 部分 | parser 支持 `13F-HR`，但当前数据库中 13F 数量为 0；需要确定机构主体或外部 13F 源 |
+| Institutional ownership / 13F | MarketBeat；SEC EDGAR 原始 filing | `https://www.marketbeat.com/stocks/NYSE/CRCL/institutional-ownership/`；SEC EDGAR 13F | 已落库 | `observations`：`P2_CRCL_INSTITUTIONAL_*`；MarketBeat 用作公开聚合源，SEC 仍适合做原始 filing 复核 |
 | Compliance cost ratio | SEC 10-Q operating expense detail | Circle 10-Q / 10-K；可能需正文表格或人工标注 compliance/legal/regulatory affairs | 未自动化 | 当前无 compliance cost ratio observation；需要定义 taxonomy / 文本抽取规则 |
 | CRCL short interest | FINRA / exchange-listed source | 当前自动源：`https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest` | 已落库 | `observations`：`P2_FINRA_SHORT_INTEREST`、days to cover、change pct；注意该源文档中标注过“不是 exchange-listed NYSE CRCL dataset”的口径风险 |
 | Lock-up / offering | SEC S-1 / 424B / 8-K / Form 4 | SEC EDGAR | 部分 | 相关 filing 元数据可取；锁定期条款和解禁日期仍需正文解析或人工核对 |
@@ -135,34 +136,32 @@
 
 | 类别 | 指标数 | observation 数 | 说明 |
 | --- | ---: | ---: | --- |
-| `stablecoin_supply` | 5 | 21 | USDC supply、change、stablecoin total cap |
-| `mint_redeem_flow` | 9 | 18 | Circle issued / redeemed / net issuance |
-| `reserve_composition` | 7 | 14 | Circle reserve composition + SEC segregated cash |
+| `stablecoin_supply` | 5 | 45 | USDC supply、change、stablecoin total cap |
+| `mint_redeem_flow` | 9 | 45 | Circle issued / redeemed / net issuance |
+| `reserve_composition` | 7 | 31 | Circle reserve composition + SEC segregated cash |
 | `reserve_fund` | 5 | 20 | BlackRock / Circle Reserve Fund |
 | `rates` | 4 | 16 | Treasury yields + SOFR |
-| `peg_check` | 2 | 6 | USDC / USDT price |
-| `peg_liquidity` | 5 | 10 | Curve 3pool |
-| `crypto_beta` | 2 | 6 | BTC / ETH |
-| `equity_market` | 5 | 12 | CRCL price / volume / short interest |
-| `competition` | 7 | 21 | USDC share、USDT、PYUSD、FDUSD、USDe、USDY |
-| `chain_distribution` | 6 | 18 | USDC by chain |
-| `chain_activity` | 6 | 15 | active addresses、transaction/transfer count、adjusted transfer volume、filing-period velocity |
-| `defi_adoption` | 27 | 54 | Aave / Compound USDC deposits |
-| `rwa_treasuries` | 2 | 4 | tokenized Treasury AUM / BUIDL |
-| `channel_dependence` | 5 | 10 | Coinbase stablecoin and custody metrics |
-| `income_statement` | 10 | 20 | Circle revenue/cost/RLDC/EBITDA |
-| `operating_indicator` | 2 | 4 | Circle USDC period average/end |
-| `sec_filing` | 9 | 28 | latest filing metadata observations |
+| `peg_check` | 2 | 12 | USDC / USDT price |
+| `peg_liquidity` | 5 | 25 | Curve 3pool |
+| `crypto_beta` | 2 | 12 | BTC / ETH |
+| `equity_market` | 5 | 27 | CRCL price / volume / short interest |
+| `competition` | 7 | 42 | USDC share、USDT、PYUSD、FDUSD、USDe、USDY |
+| `chain_distribution` | 6 | 36 | USDC by chain |
+| `chain_activity` | 6 | 29 | active addresses、transaction/transfer count、adjusted transfer volume、filing-period velocity |
+| `defi_adoption` | 27 | 135 | Aave / Compound USDC deposits |
+| `rwa_treasuries` | 2 | 10 | tokenized Treasury AUM / BUIDL |
+| `channel_dependence` | 5 | 15 | Coinbase stablecoin and custody metrics |
+| `income_statement` | 11 | 31 | Circle revenue/cost/RLDC/EBITDA/Other revenue share |
+| `operating_indicator` | 2 | 6 | Circle USDC period average/end |
+| `sec_filing` | 9 | 36 | latest filing metadata observations |
+| `institutional_ownership` | 7 | 21 | MarketBeat CRCL institutional ownership 聚合指标 |
+| `platform_metrics` | 6 | 13 | CPN TPV、Arc public/testnet metrics |
 | `technical_status` | 4 | 11 | Base / Solana / Circle / Ethereum status |
 
 ## 后续补齐优先级
 
 | 优先级 | 要补什么 | 建议做法 |
 | --- | --- | --- |
-| P1 | Exchange USDC balances | 接入 `GLASSNODE_API_KEY`、Nansen 或 TokenTerminal API；或者改用可稳定返回 JSON 的替代源 |
+| P1 | Exchange USDC balances | 已改为 CoinGlass Exchange Balance List；配置 `COINGLASS_API_KEY` 后可自动落库，CryptoQuant 页面当前有登录/Cloudflare 门槛 |
 | P1 | Dune 固定 query / 截图 | 增加 `DUNE_API_KEY` 和固定 query id；把截图/口径版本记录到 `events` 或单独表 |
-| P1 | CPN TPV | 从 Circle IR、earnings materials、8-K 或 transcript 提取 TPV、客户数、收费模式；新增 `platform_metrics` 或写入 `observations` |
-| P1 | Arc mainnet / usage | 增加 Circle blog / docs / pressroom 关键词扫描；主网上线后再接真实链上数据和费用模型 |
 | P2 | Compliance cost ratio | 为 Circle 10-Q/10-K 的 compliance/legal/regulatory affairs 成本建立文本/XBRL 抽取规则；无法稳定抽取时先人工录入 |
-| P2 | 13F / institutional ownership | 明确要跟踪的机构主体或接入 13F 聚合源；当前只靠 Circle/Coinbase submissions 不足以获得持仓全景 |
-| P2 | Other revenue share 派生指标 | 已有 Other revenue 和 total revenue，可在 parser 或派生层补 `P2_CIRCLE_OTHER_REVENUE_SHARE` |

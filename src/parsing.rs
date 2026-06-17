@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use anyhow::{Context, Result, anyhow};
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{NaiveDate, Utc};
 use roxmltree::Document;
 use scraper::{Html, Selector};
 use serde::Deserialize;
@@ -900,6 +900,16 @@ struct AlliumAdjustedTransferRow {
     txn_count_30d: f64,
 }
 
+#[derive(Debug, Deserialize)]
+struct CoinGlassExchangeBalanceResponse {
+    #[serde(default)]
+    code: Option<Value>,
+    #[serde(default)]
+    msg: Option<String>,
+    #[serde(default)]
+    data: Option<Value>,
+}
+
 pub fn parse_visa_allium_usdc_adjusted_transfer_volume(
     text: &str,
     source_url: &str,
@@ -935,73 +945,371 @@ pub fn parse_visa_allium_usdc_adjusted_transfer_volume(
     )])
 }
 
-pub fn parse_glassnode_exchange_balance(text: &str, source_url: &str) -> Result<Vec<Observation>> {
-    if !text.contains("USDC Exchange Balance (Total)") {
+pub fn parse_coinglass_exchange_balance(text: &str, source_url: &str) -> Result<Vec<Observation>> {
+    let response: CoinGlassExchangeBalanceResponse = serde_json::from_str(text)?;
+    if response.data.is_none()
+        && let Some(code) = response.code.as_ref()
+    {
+        let code_text = code
+            .as_str()
+            .map(str::to_string)
+            .unwrap_or_else(|| code.to_string());
+        let message = response
+            .msg
+            .as_deref()
+            .filter(|msg| !msg.trim().is_empty())
+            .unwrap_or("no message");
         return Err(anyhow!(
-            "Glassnode USDC exchange balance page marker missing"
+            "CoinGlass API returned code {code_text}: {message}; set COINGLASS_API_KEY for the CG-API-KEY header"
+        ));
+    }
+    let rows = response
+        .data
+        .as_ref()
+        .context("CoinGlass exchange balance response missing data")?
+        .as_array()
+        .context("CoinGlass exchange balance data is not an array")?;
+
+    let mut total_balance = 0.0;
+    let mut components = Vec::new();
+    for row in rows {
+        let Some(balance) = numeric_field(row, &["balance", "totalBalance", "value", "amount"])
+        else {
+            continue;
+        };
+        total_balance += balance;
+        components.push(json!({
+            "exchange": string_field(row, &["exchange", "exchangeName", "name"]),
+            "balance": balance,
+            "change_percent_1d": numeric_field(row, &["changePercent24h", "changePercent1d", "change1d", "change24h"]),
+            "change_percent_7d": numeric_field(row, &["changePercent7d", "change7d"]),
+            "change_percent_30d": numeric_field(row, &["changePercent30d", "change30d"]),
+        }));
+    }
+
+    if total_balance <= 0.0 {
+        return Err(anyhow!(
+            "CoinGlass USDC exchange balance rows have no numeric balance"
         ));
     }
 
-    let value_marker = r#"\"value\",\"$"#;
-    let value_start = text
-        .find(value_marker)
-        .context("Glassnode latest value marker missing")?
-        + value_marker.len();
-    let value_end = text[value_start..]
-        .find(r#"\""#)
-        .context("Glassnode latest value terminator missing")?
-        + value_start;
-    let value_text = &text[value_start..value_end];
-    let value = value_text
-        .replace(',', "")
-        .parse::<f64>()
-        .with_context(|| format!("invalid Glassnode latest value: {value_text}"))?;
-
-    let before_value = &text[..value_start];
-    let date_marker = r#"\"date\","#;
-    let date_start = before_value
-        .rfind(date_marker)
-        .context("Glassnode latest value date marker missing")?
-        + date_marker.len();
-    let date_tail = &before_value[date_start..];
-    let epoch_text = date_tail
-        .chars()
-        .take_while(|ch| ch.is_ascii_digit())
-        .collect::<String>();
-    let epoch = epoch_text
-        .parse::<i64>()
-        .with_context(|| format!("invalid Glassnode latest value epoch: {epoch_text}"))?;
-    let observed_at = DateTime::<Utc>::from_timestamp(epoch, 0)
-        .context("Glassnode latest value epoch out of range")?
-        .date_naive()
-        .to_string();
-    let label_start_search = before_value.rfind(date_marker).unwrap_or(0);
-    let label_search = &text[label_start_search..value_end];
-    let label = label_search.find(r#"\"label\",\""#).and_then(|idx| {
-        let label_start = label_start_search + idx + r#"\"label\",\""#.len();
-        let label_end = text[label_start..].find(r#"\""#)? + label_start;
-        Some(text[label_start..label_end].to_string())
-    });
-
+    let observed_at = Utc::now().date_naive().to_string();
     Ok(vec![obs!(
         "P1_EXCHANGE_USDC_BALANCES",
         "USDC exchange balance, all exchanges",
         "P1",
         "exchange_balance",
-        Some(value),
+        Some(total_balance),
         None,
-        "USD",
+        "USDC",
         &observed_at,
-        "Glassnode Studio",
+        "CoinGlass Exchange Balance List",
         source_url,
         json!({
             "asset": "USDC",
-            "metric": "distribution.BalanceExchanges",
             "scope": "all exchanges",
-            "latest_label": label,
-            "method": "parse Glassnode Studio rendered latest value metadata",
+            "method": "sum CoinGlass exchange-level USDC balances",
+            "component_count": components.len(),
+            "components": components,
         }),
     )])
+}
+
+pub fn parse_circle_platform_metrics(text: &str, source_url: &str) -> Result<Vec<Observation>> {
+    let plain = html_plain_text(text);
+    let mut observations = Vec::new();
+
+    if let Some(cpn_idx) = plain.find("Continued CPN Expansion") {
+        let section = plain[cpn_idx..].chars().take(900).collect::<String>();
+        let observed_at = first_long_form_date_after(&section, "as of")
+            .unwrap_or_else(|| Utc::now().date_naive().to_string());
+        let annualized_tpv = money_amount_after(&section, "annualized transaction volume")
+            .or_else(|| money_amount_after(&section, "CPN network"))
+            .context("Circle CPN annualized TPV missing")?;
+        observations.push(obs!(
+            "P1_CPN_ANNUALIZED_TPV",
+            "Circle Payments Network annualized TPV",
+            "P1",
+            "platform_metrics",
+            Some(annualized_tpv),
+            None,
+            "USD/year",
+            &observed_at,
+            "Circle press release",
+            source_url,
+            json!({
+                "business_line": "Circle Payments Network",
+                "window": "annualized trailing 30 day activity",
+                "method": "parse Circle press release CPN expansion paragraph",
+            }),
+        ));
+    }
+
+    if let Some(arc_idx) = arc_metrics_section_start(&plain) {
+        let section = plain[arc_idx..].chars().take(1200).collect::<String>();
+        let observed_at = first_long_form_date_after(&section, "as of")
+            .or_else(|| first_long_form_date_after(&plain, "NEW YORK"))
+            .unwrap_or_else(|| Utc::now().date_naive().to_string());
+        if let Some(status) = arc_status_from_text(&section) {
+            observations.push(obs!(
+                "P1_ARC_MAINNET_STATUS",
+                "Arc mainnet status",
+                "P1",
+                "platform_metrics",
+                None,
+                Some(status.clone()),
+                "status",
+                &observed_at,
+                "Circle press release",
+                source_url,
+                json!({
+                    "business_line": "Arc",
+                    "method": "parse Circle press release Arc status language",
+                    "status_text": status,
+                }),
+            ));
+        }
+
+        if let Some(testnet_daily_transactions) =
+            number_after_marker(&section, "daily average transaction volumes")
+                .or_else(|| number_before_marker(&section, "daily average transaction volumes"))
+        {
+            observations.push(obs!(
+                "P1_ARC_TESTNET_DAILY_AVG_TRANSACTIONS",
+                "Arc testnet daily average transactions",
+                "P1",
+                "platform_metrics",
+                Some(testnet_daily_transactions),
+                None,
+                "transactions/day",
+                &observed_at,
+                "Circle press release",
+                source_url,
+                json!({
+                    "business_line": "Arc",
+                    "source_caveat": "testnet usage, not revenue",
+                    "method": "parse Circle press release Arc testnet activity paragraph",
+                }),
+            ));
+        }
+
+        if let Some(total_transactions) =
+            number_after_marker(&section, "Total transactions have exceeded")
+        {
+            observations.push(obs!(
+                "P1_ARC_TESTNET_TOTAL_TRANSACTIONS",
+                "Arc testnet total transactions",
+                "P1",
+                "platform_metrics",
+                Some(total_transactions),
+                None,
+                "transactions",
+                &observed_at,
+                "Circle press release",
+                source_url,
+                json!({
+                    "business_line": "Arc",
+                    "source_caveat": "testnet usage, not revenue",
+                    "method": "parse Circle press release Arc cumulative testnet transaction sentence",
+                }),
+            ));
+        }
+    }
+
+    if observations.is_empty() {
+        return Err(anyhow!("Circle platform metrics missing from source page"));
+    }
+
+    Ok(observations)
+}
+
+pub fn parse_arc_public_status(text: &str, source_url: &str) -> Result<Vec<Observation>> {
+    let plain = html_plain_text(text);
+    let observed_at = Utc::now().date_naive().to_string();
+    let mut observations = Vec::new();
+
+    if plain.contains("Live on public testnet") || plain.contains("public testnet") {
+        observations.push(obs!(
+            "P1_ARC_PUBLIC_NETWORK_STATUS",
+            "Arc public network status",
+            "P1",
+            "platform_metrics",
+            None,
+            Some("public testnet".to_string()),
+            "status",
+            &observed_at,
+            "Arc website",
+            source_url,
+            json!({"method": "parse Arc homepage public network status"}),
+        ));
+    }
+
+    for (code, name, label, unit) in [
+        (
+            "P1_ARC_WEEKLY_TRANSACTION_COST",
+            "Arc average weekly transaction cost",
+            "Avg. Weekly transaction cost",
+            "USD/transaction",
+        ),
+        (
+            "P1_ARC_WEEKLY_CONTRACTS_DEPLOYED",
+            "Arc weekly contracts deployed",
+            "Weekly contracts deployed",
+            "contracts/week",
+        ),
+        (
+            "P1_ARC_WEEKLY_ACCOUNTS_CREATED",
+            "Arc weekly accounts created",
+            "Weekly accounts created",
+            "accounts/week",
+        ),
+        (
+            "P1_ARC_WEEKLY_TRANSACTIONS",
+            "Arc weekly transactions",
+            "Weekly transactions",
+            "transactions/week",
+        ),
+    ] {
+        if let Some(value) = number_after_marker(&plain, label) {
+            observations.push(obs!(
+                code,
+                name,
+                "P1",
+                "platform_metrics",
+                Some(value),
+                None,
+                unit,
+                &observed_at,
+                "Arc website",
+                source_url,
+                json!({
+                    "source_caveat": "public testnet usage, not mainnet revenue",
+                    "method": "parse Arc homepage live public testnet metric",
+                    "source_label": label,
+                }),
+            ));
+        }
+    }
+
+    if observations.is_empty() {
+        return Err(anyhow!(
+            "Arc public status metrics missing from source page"
+        ));
+    }
+
+    Ok(observations)
+}
+
+pub fn parse_marketbeat_institutional_ownership(
+    text: &str,
+    source_url: &str,
+) -> Result<Vec<Observation>> {
+    let html = Html::parse_document(text);
+    let observed_at =
+        marketbeat_revised_date(&html).unwrap_or_else(|| Utc::now().date_naive().to_string());
+    let mut observations = Vec::new();
+
+    let stat_selector = Selector::parse(".stat-summary-wrapper").unwrap();
+    for node in html.select(&stat_selector) {
+        let text = normalize_text(&node.text().collect::<Vec<_>>().join(" "));
+        if text.contains("Number of Institutional Buyers") {
+            if let Some(value) = last_number_in_text(&text) {
+                observations.push(institutional_obs(
+                    "P2_CRCL_INSTITUTIONAL_BUYERS_12M",
+                    "CRCL institutional buyers, last 12 months",
+                    value,
+                    "count",
+                    &observed_at,
+                    source_url,
+                    "MarketBeat stat summary",
+                ));
+            }
+        } else if text.contains("Total Institutional Inflows") {
+            if let Some(value) = money_amount_after(&text, "Inflows") {
+                observations.push(institutional_obs(
+                    "P2_CRCL_INSTITUTIONAL_INFLOW_12M",
+                    "CRCL institutional inflows, last 12 months",
+                    value,
+                    "USD",
+                    &observed_at,
+                    source_url,
+                    "MarketBeat stat summary",
+                ));
+            }
+        } else if text.contains("Number of Institutional Sellers") {
+            if let Some(value) = last_number_in_text(&text) {
+                observations.push(institutional_obs(
+                    "P2_CRCL_INSTITUTIONAL_SELLERS_12M",
+                    "CRCL institutional sellers, last 12 months",
+                    value,
+                    "count",
+                    &observed_at,
+                    source_url,
+                    "MarketBeat stat summary",
+                ));
+            }
+        } else if text.contains("Total Institutional Outflows")
+            && let Some(value) = money_amount_after(&text, "Outflows")
+        {
+            observations.push(institutional_obs(
+                "P2_CRCL_INSTITUTIONAL_OUTFLOW_12M",
+                "CRCL institutional outflows, last 12 months",
+                value,
+                "USD",
+                &observed_at,
+                source_url,
+                "MarketBeat stat summary",
+            ));
+        }
+    }
+
+    for (selector, code, name, unit, marker) in [
+        (
+            "#answer1",
+            "P2_CRCL_INSTITUTIONAL_HOLDER_COUNT_24M",
+            "CRCL institutional holder count, previous 24 months",
+            "count",
+            "previous two years",
+        ),
+        (
+            "#answer3",
+            "P2_CRCL_INSTITUTIONAL_SHARES_BOUGHT_24M",
+            "CRCL institutional shares bought, previous 24 months",
+            "shares",
+            "bought a total of",
+        ),
+        (
+            "#answer5",
+            "P2_CRCL_INSTITUTIONAL_SHARES_SOLD_24M",
+            "CRCL institutional shares sold, previous 24 months",
+            "shares",
+            "sold a total of",
+        ),
+    ] {
+        let selector = Selector::parse(selector).unwrap();
+        if let Some(node) = html.select(&selector).next() {
+            let text = normalize_text(&node.text().collect::<Vec<_>>().join(" "));
+            if let Some(value) = number_after_marker(&text, marker) {
+                observations.push(institutional_obs(
+                    code,
+                    name,
+                    value,
+                    unit,
+                    &observed_at,
+                    source_url,
+                    "MarketBeat FAQ summary",
+                ));
+            }
+        }
+    }
+
+    if observations.is_empty() {
+        return Err(anyhow!(
+            "MarketBeat CRCL institutional ownership metrics missing"
+        ));
+    }
+
+    Ok(observations)
 }
 
 #[derive(Debug, Deserialize)]
@@ -1624,6 +1932,24 @@ pub fn parse_circle_sec_filing(
         .context("Circle filing net income fact missing")?;
     let adjusted_ebitda = adjusted_ebitda_from_text(text)
         .context("Circle filing Adjusted EBITDA reconciliation value missing")?;
+    let basic_shares = duration_fact(
+        &ix,
+        "us-gaap:WeightedAverageNumberOfSharesOutstandingBasic",
+        observed_at,
+        None,
+    );
+    let diluted_shares = duration_fact(
+        &ix,
+        "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+        observed_at,
+        None,
+    );
+    let shares_outstanding = instant_fact(
+        &ix,
+        "dei:EntityCommonStockSharesOutstanding",
+        observed_at,
+        None,
+    );
     let usdc_end = filing_table_value_after_label(text, "USDC in circulation, end of period")
         .map(|value| value * 1_000_000.0);
     let usdc_average =
@@ -1646,6 +1972,7 @@ pub fn parse_circle_sec_filing(
 
     let rldc = total_revenue - total_distribution_costs;
     let rldc_margin = percent_ratio(rldc, total_revenue);
+    let other_revenue_share = percent_ratio(other_revenue, total_revenue);
     let adjusted_ebitda_margin = percent_ratio(adjusted_ebitda, rldc);
 
     let mut out = vec![
@@ -1666,6 +1993,23 @@ pub fn parse_circle_sec_filing(
             observed_at,
             source_url,
             "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+        ),
+        obs!(
+            "P2_CIRCLE_OTHER_REVENUE_SHARE",
+            "Circle other revenue share",
+            "P2",
+            "income_statement",
+            Some(other_revenue_share),
+            None,
+            "percent",
+            observed_at,
+            "SEC EDGAR filing",
+            source_url,
+            json!({
+                "method": "P2_CIRCLE_OTHER_REVENUE / P2_CIRCLE_TOTAL_REVENUE_AND_RESERVE_INCOME",
+                "other_revenue": other_revenue,
+                "total_revenue_and_reserve_income": total_revenue,
+            }),
         ),
         sec_obs(
             "P2_CIRCLE_TOTAL_REVENUE_AND_RESERVE_INCOME",
@@ -1800,6 +2144,51 @@ pub fn parse_circle_sec_filing(
             "SEC EDGAR filing",
             source_url,
             json!({"source_label": "USDC onchain transaction volume", "source_unit": "trillions"}),
+        ));
+    }
+    if let Some(value) = basic_shares {
+        out.push(obs!(
+            "P2_CRCL_BASIC_SHARES_OUTSTANDING",
+            "CRCL weighted-average basic shares outstanding",
+            "P2",
+            "equity_valuation",
+            Some(value),
+            None,
+            "shares",
+            observed_at,
+            "SEC EDGAR filing",
+            source_url,
+            json!({"xbrl_name": "us-gaap:WeightedAverageNumberOfSharesOutstandingBasic"}),
+        ));
+    }
+    if let Some(value) = diluted_shares {
+        out.push(obs!(
+            "P2_CRCL_DILUTED_SHARES_OUTSTANDING",
+            "CRCL weighted-average diluted shares outstanding",
+            "P2",
+            "equity_valuation",
+            Some(value),
+            None,
+            "shares",
+            observed_at,
+            "SEC EDGAR filing",
+            source_url,
+            json!({"xbrl_name": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding"}),
+        ));
+    }
+    if let Some(value) = shares_outstanding {
+        out.push(obs!(
+            "P2_CRCL_SHARES_OUTSTANDING",
+            "CRCL common shares outstanding",
+            "P2",
+            "equity_valuation",
+            Some(value),
+            None,
+            "shares",
+            observed_at,
+            "SEC EDGAR filing",
+            source_url,
+            json!({"xbrl_name": "dei:EntityCommonStockSharesOutstanding"}),
         ));
     }
     if let (Some(volume), Some(average_circulation)) = (onchain_volume, usdc_average)
@@ -2270,6 +2659,34 @@ fn nmfp_obs(spec: NmfpObservationSpec<'_>) -> Observation {
     )
 }
 
+fn institutional_obs(
+    code: &str,
+    name: &str,
+    value: f64,
+    unit: &str,
+    observed_at: &str,
+    source_url: &str,
+    source_section: &str,
+) -> Observation {
+    obs!(
+        code,
+        name,
+        "P2",
+        "institutional_ownership",
+        Some(value),
+        None,
+        unit,
+        observed_at,
+        "MarketBeat institutional ownership",
+        source_url,
+        json!({
+            "symbol": "CRCL",
+            "method": "parse public MarketBeat CRCL institutional ownership page",
+            "source_section": source_section,
+        }),
+    )
+}
+
 fn percent_ratio(numerator: f64, denominator: f64) -> f64 {
     if denominator == 0.0 {
         0.0
@@ -2348,6 +2765,157 @@ fn first_number_after(text: &str) -> Option<f64> {
     None
 }
 
+fn number_after_marker(text: &str, marker: &str) -> Option<f64> {
+    let idx = text.find(marker)? + marker.len();
+    number_with_unit(&text[idx..])
+}
+
+fn number_before_marker(text: &str, marker: &str) -> Option<f64> {
+    let idx = text.find(marker)?;
+    let before = &text[..idx];
+    let tokens = before.split_whitespace().collect::<Vec<_>>();
+    for start in (0..tokens.len()).rev().take(16) {
+        let candidate = tokens[start..].join(" ");
+        if let Some(value) = number_with_unit(&candidate) {
+            return Some(value);
+        }
+    }
+    None
+}
+
+fn number_with_unit(text: &str) -> Option<f64> {
+    let mut previous_number = None;
+    for (tokens_seen, raw_token) in text.split_whitespace().enumerate() {
+        if tokens_seen >= 80 {
+            break;
+        }
+        let token = raw_token
+            .trim_matches(|ch: char| matches!(ch, '$' | '%' | ',' | '.' | ';' | ':' | ')' | '('));
+        let lower = token.to_ascii_lowercase();
+        if let Some(value) = previous_number.take() {
+            if lower.starts_with("trillion") {
+                return Some(value * 1_000_000_000_000.0);
+            }
+            if lower.starts_with("billion") {
+                return Some(value * 1_000_000_000.0);
+            }
+            if lower.starts_with("million") {
+                return Some(value * 1_000_000.0);
+            }
+            if lower.starts_with("thousand") {
+                return Some(value * 1_000.0);
+            }
+            return Some(value);
+        }
+
+        if let Some(value) = parse_number_token(token) {
+            if lower.ends_with('t') {
+                return Some(value * 1_000_000_000_000.0);
+            }
+            if lower.ends_with('b') {
+                return Some(value * 1_000_000_000.0);
+            }
+            if lower.ends_with('m') {
+                return Some(value * 1_000_000.0);
+            }
+            if lower.ends_with('k') {
+                return Some(value * 1_000.0);
+            }
+            previous_number = Some(value);
+        }
+    }
+    previous_number
+}
+
+fn parse_number_token(token: &str) -> Option<f64> {
+    let cleaned = token
+        .chars()
+        .filter(|ch| ch.is_ascii_digit() || *ch == '.' || *ch == '-' || *ch == '+')
+        .collect::<String>();
+    if cleaned.is_empty() || cleaned == "." || cleaned == "-" || cleaned == "+" {
+        return None;
+    }
+    cleaned.parse::<f64>().ok()
+}
+
+fn last_number_in_text(text: &str) -> Option<f64> {
+    text.split_whitespace()
+        .filter_map(|token| {
+            parse_number_token(token.trim_matches(|ch: char| {
+                matches!(ch, '$' | '%' | ',' | '.' | ';' | ':' | ')' | '(')
+            }))
+        })
+        .next_back()
+}
+
+fn money_amount_after(text: &str, marker: &str) -> Option<f64> {
+    let idx = text.find(marker).map(|idx| idx + marker.len()).unwrap_or(0);
+    let tail = &text[idx..];
+    let dollar_idx = tail.find('$')?;
+    number_with_unit(&tail[dollar_idx..])
+}
+
+fn numeric_field(value: &Value, names: &[&str]) -> Option<f64> {
+    names.iter().find_map(|name| {
+        let value = value.get(*name)?;
+        value.as_f64().or_else(|| {
+            value
+                .as_str()
+                .map(|text| text.replace(',', ""))
+                .and_then(|text| text.parse::<f64>().ok())
+        })
+    })
+}
+
+fn string_field(value: &Value, names: &[&str]) -> Option<String> {
+    names.iter().find_map(|name| {
+        value
+            .get(*name)?
+            .as_str()
+            .map(str::trim)
+            .filter(|text| !text.is_empty())
+            .map(str::to_string)
+    })
+}
+
+fn first_long_form_date_after(text: &str, marker: &str) -> Option<String> {
+    let idx = text.find(marker).map(|idx| idx + marker.len()).unwrap_or(0);
+    let tail = &text[idx..];
+    for month in [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ] {
+        let Some(month_idx) = tail.find(month) else {
+            continue;
+        };
+        let candidate = tail[month_idx..]
+            .chars()
+            .take_while(|ch| ch.is_ascii_alphanumeric() || *ch == ',' || *ch == ' ')
+            .collect::<String>();
+        let candidate = candidate
+            .split_whitespace()
+            .take(3)
+            .collect::<Vec<_>>()
+            .join(" ");
+        if let Ok(date) = NaiveDate::parse_from_str(&candidate, "%B %d, %Y")
+            .or_else(|_| NaiveDate::parse_from_str(&candidate, "%B %e, %Y"))
+        {
+            return Some(date.to_string());
+        }
+    }
+    None
+}
+
 fn first_iso_date(text: &str) -> Option<String> {
     text.split_whitespace().find_map(|token| {
         let cleaned = token.trim_matches(|ch: char| !(ch.is_ascii_digit() || ch == '-'));
@@ -2418,6 +2986,45 @@ fn html_plain_text(text: &str) -> String {
         .next()
         .map(|body| normalize_text(&body.text().collect::<Vec<_>>().join(" ")))
         .unwrap_or_else(|| normalize_text(text))
+}
+
+fn arc_status_from_text(text: &str) -> Option<String> {
+    for marker in [
+        "Arc remains on track for mainnet launch this year",
+        "meaningful progress toward launching Arc mainnet",
+        "soon launch on mainnet",
+    ] {
+        if text.contains(marker) {
+            return Some(marker.to_string());
+        }
+    }
+    None
+}
+
+fn arc_metrics_section_start(text: &str) -> Option<usize> {
+    [
+        "Arc: Public testnet",
+        "Arc : Public testnet",
+        "Public testnet launched",
+        "Arc remains on track for mainnet launch this year",
+        "meaningful progress toward launching Arc mainnet",
+        "soon launch on mainnet",
+        "Arc",
+    ]
+    .iter()
+    .find_map(|marker| text.find(marker))
+}
+
+fn marketbeat_revised_date(html: &Html) -> Option<String> {
+    let selector = Selector::parse("meta[name='revised'], meta[name='last-modified']").ok()?;
+    html.select(&selector).find_map(|node| {
+        let date = node.value().attr("content")?;
+        if NaiveDate::parse_from_str(date, "%Y-%m-%d").is_ok() {
+            Some(date.to_string())
+        } else {
+            None
+        }
+    })
 }
 
 pub fn parse_circle_pressroom(text: &str, _source_url: &str) -> Result<Vec<Event>> {
@@ -2988,25 +3595,149 @@ mod tests {
     }
 
     #[test]
-    fn parses_glassnode_exchange_balance_latest_value() {
-        let html = r#"
-        <html>
-          <head><title>USDC Exchange Balance (Total) All Exchanges - Glassnode</title></head>
-          <body><script>
-            self.__reactRouterContext = "latestValue,{\"rows\":[1],\"date\",1781395200,\"label\",\"24 hours ago\",\"value\",\"$15,229,582,787.12\",\"title\",\"USDC Exchange Balance (Total) latest values\"}";
-          </script></body>
-        </html>
-        "#;
+    fn parses_coinglass_exchange_balance_list() {
+        let json = r#"{
+          "code": "0",
+          "data": [
+            {"exchange": "Binance", "balance": 1000.5, "changePercent24h": 1.2},
+            {"exchangeName": "Coinbase", "totalBalance": "2000.25", "changePercent7d": -0.5}
+          ]
+        }"#;
 
         let observations =
-            parse_glassnode_exchange_balance(html, "https://example.test/glassnode").unwrap();
+            parse_coinglass_exchange_balance(json, "https://example.test/coinglass").unwrap();
         let balance = observations
             .iter()
             .find(|obs| obs.metric_code == "P1_EXCHANGE_USDC_BALANCES")
             .unwrap();
-        assert_eq!(balance.observed_at, "2026-06-14");
-        assert_eq!(balance.value_num.unwrap(), 15_229_582_787.12);
-        assert_eq!(balance.attributes["latest_label"], "24 hours ago");
+        assert_eq!(balance.value_num.unwrap(), 3000.75);
+        assert_eq!(balance.source, "CoinGlass Exchange Balance List");
+        assert_eq!(balance.attributes["component_count"], 2);
+    }
+
+    #[test]
+    fn coinglass_exchange_balance_error_mentions_api_key() {
+        let json = r#"{"code":"401","msg":"API key missing."}"#;
+        let error =
+            parse_coinglass_exchange_balance(json, "https://example.test/coinglass").unwrap_err();
+        assert!(error.to_string().contains("COINGLASS_API_KEY"));
+    }
+
+    #[test]
+    fn parses_circle_platform_metrics_cpn_tpv() {
+        let html = r#"
+        <html><body>
+          <p>NEW YORK – MAY 11, 2026 — Circle announced results.</p>
+          <li><strong>Continued CPN Expansion: </strong>Circle continues to grow the CPN network,
+          with $8.3 billion in annualized transaction volume based on the trailing 30 day activity
+          as of March 31, 2026.</li>
+        </body></html>
+        "#;
+
+        let observations =
+            parse_circle_platform_metrics(html, "https://example.test/circle-q1").unwrap();
+        let tpv = observations
+            .iter()
+            .find(|obs| obs.metric_code == "P1_CPN_ANNUALIZED_TPV")
+            .unwrap();
+        assert_eq!(tpv.observed_at, "2026-03-31");
+        assert!((tpv.value_num.unwrap() - 8_300_000_000.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn parses_circle_platform_metrics_arc_fallback_metrics() {
+        let html = r#"
+        <html><body>
+          <nav>Platform Arc The Economic OS for the internet Payments Circle Payments Network</nav>
+          <p>NEW YORK - February 25, 2026 - Circle announced results.</p>
+          <p>Arc: Public testnet launched with 100+ participants spanning banking, capital markets,
+          digital assets, payments, and technology. Testnet is performing strongly with near 100%
+          uptime, half second transaction finality, and daily average transaction volumes of 2.3 million
+          based on the trailing 30 days as of February 20, 2026. Total transactions have exceeded
+          166 million since testnet launch. Arc remains on track for mainnet launch this year.</p>
+        </body></html>
+        "#;
+
+        let observations =
+            parse_circle_platform_metrics(html, "https://example.test/circle-q4").unwrap();
+        let status = observations
+            .iter()
+            .find(|obs| obs.metric_code == "P1_ARC_MAINNET_STATUS")
+            .unwrap();
+        assert_eq!(status.observed_at, "2026-02-20");
+        let daily_txs = observations
+            .iter()
+            .find(|obs| obs.metric_code == "P1_ARC_TESTNET_DAILY_AVG_TRANSACTIONS")
+            .unwrap();
+        assert_eq!(daily_txs.value_num.unwrap(), 2_300_000.0);
+        let total_txs = observations
+            .iter()
+            .find(|obs| obs.metric_code == "P1_ARC_TESTNET_TOTAL_TRANSACTIONS")
+            .unwrap();
+        assert_eq!(total_txs.value_num.unwrap(), 166_000_000.0);
+    }
+
+    #[test]
+    fn parses_arc_public_status_metrics() {
+        let html = r#"
+        <html><body>
+          <h2>Live on public testnet</h2>
+          <div>Avg. Weekly transaction cost $ 0.005</div>
+          <div>Weekly contracts deployed 1385031</div>
+          <div>Weekly accounts created 53917</div>
+          <div>Weekly transactions 21938428</div>
+        </body></html>
+        "#;
+
+        let observations = parse_arc_public_status(html, "https://example.test/arc").unwrap();
+        let status = observations
+            .iter()
+            .find(|obs| obs.metric_code == "P1_ARC_PUBLIC_NETWORK_STATUS")
+            .unwrap();
+        assert_eq!(status.value_text.as_deref(), Some("public testnet"));
+        let weekly_txs = observations
+            .iter()
+            .find(|obs| obs.metric_code == "P1_ARC_WEEKLY_TRANSACTIONS")
+            .unwrap();
+        assert_eq!(weekly_txs.value_num.unwrap(), 21_938_428.0);
+    }
+
+    #[test]
+    fn parses_marketbeat_institutional_ownership_summary() {
+        let html = r#"
+        <html><head><meta name="revised" content="2026-06-16"></head><body>
+          <div class="stat-summary-wrapper">
+            <dt>Number of Institutional Buyers (last 12 months)</dt><dd>403</dd>
+          </div>
+          <div class="stat-summary-wrapper">
+            <dt>Total Institutional Inflows (last 12 months)</dt><dd>$11.27B</dd>
+          </div>
+          <div class="stat-summary-wrapper">
+            <dt>Number of Institutional Sellers (last 12 months)</dt><dd>70</dd>
+          </div>
+          <div class="stat-summary-wrapper">
+            <dt>Total Institutional Outflows (last 12 months)</dt><dd>$798.74M</dd>
+          </div>
+          <p id="answer1">During the previous two years, 424 institutional investors and hedge funds held shares.</p>
+          <p id="answer3">Institutional investors have bought a total of 89,355,801 shares in the last 24 months.</p>
+          <p id="answer5">Institutional investors have sold a total of 7,523,174 shares in the last 24 months.</p>
+        </body></html>
+        "#;
+
+        let observations =
+            parse_marketbeat_institutional_ownership(html, "https://example.test/marketbeat")
+                .unwrap();
+        let inflow = observations
+            .iter()
+            .find(|obs| obs.metric_code == "P2_CRCL_INSTITUTIONAL_INFLOW_12M")
+            .unwrap();
+        assert_eq!(inflow.observed_at, "2026-06-16");
+        assert_eq!(inflow.value_num.unwrap(), 11_270_000_000.0);
+        let shares_sold = observations
+            .iter()
+            .find(|obs| obs.metric_code == "P2_CRCL_INSTITUTIONAL_SHARES_SOLD_24M")
+            .unwrap();
+        assert_eq!(shares_sold.value_num.unwrap(), 7_523_174.0);
     }
 
     #[test]
@@ -3096,7 +3827,10 @@ mod tests {
             <ix:nonFraction unitRef="usd" contextRef="c-1" name="crcl:DistributionAndTransactionCosts" scale="3">405,402</ix:nonFraction>
             <ix:nonFraction unitRef="usd" contextRef="c-1" name="crcl:DistributionTransactionAndOtherCosts" scale="3">406,781</ix:nonFraction>
             <ix:nonFraction unitRef="usd" contextRef="c-1" name="us-gaap:NetIncomeLoss" scale="3">55,253</ix:nonFraction>
+            <ix:nonFraction unitRef="shares" contextRef="c-1" name="us-gaap:WeightedAverageNumberOfSharesOutstandingBasic">202,000,000</ix:nonFraction>
+            <ix:nonFraction unitRef="shares" contextRef="c-1" name="us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding">221,000,000</ix:nonFraction>
             <ix:nonFraction unitRef="usd" contextRef="c-2" name="crcl:CashAndCashEquivalentsSegregatedForTheBenefitOfStablecoinHolders" scale="3">76,893,681</ix:nonFraction>
+            <ix:nonFraction unitRef="shares" contextRef="c-2" name="dei:EntityCommonStockSharesOutstanding">210,000,000</ix:nonFraction>
             <p>USDC in circulation, end of period (1) $ 77,049 $ 59,976</p>
             <p>USDC in circulation, average of period (1) $ 75,200 $ 54,075</p>
             <p>USDC onchain transaction volume grew 263% to $21.5 trillion.</p>
@@ -3120,11 +3854,32 @@ mod tests {
             .unwrap();
         assert_eq!(rldc.value_num.unwrap(), 287_352_000.0);
 
+        let other_revenue_share = observations
+            .iter()
+            .find(|obs| obs.metric_code == "P2_CIRCLE_OTHER_REVENUE_SHARE")
+            .unwrap();
+        assert!(
+            (other_revenue_share.value_num.unwrap() - (41_625_000.0 / 694_133_000.0 * 100.0)).abs()
+                < 0.0001
+        );
+
         let adjusted_ebitda = observations
             .iter()
             .find(|obs| obs.metric_code == "P2_CIRCLE_ADJUSTED_EBITDA")
             .unwrap();
         assert_eq!(adjusted_ebitda.value_num.unwrap(), 151_401_000.0);
+
+        let diluted_shares = observations
+            .iter()
+            .find(|obs| obs.metric_code == "P2_CRCL_DILUTED_SHARES_OUTSTANDING")
+            .unwrap();
+        assert_eq!(diluted_shares.value_num.unwrap(), 221_000_000.0);
+
+        let shares_outstanding = observations
+            .iter()
+            .find(|obs| obs.metric_code == "P2_CRCL_SHARES_OUTSTANDING")
+            .unwrap();
+        assert_eq!(shares_outstanding.value_num.unwrap(), 210_000_000.0);
 
         let onchain_volume = observations
             .iter()

@@ -1,0 +1,15 @@
+{
+  "task": "framework",
+  "workflow": "framework-review",
+  "category": "framework-review",
+  "started_at": "2026-06-17T08:40:05.133172+00:00",
+  "root_dir": "/Users/zj/sync_disk/zjSync/量化/crcl",
+  "output_dir": "/Users/zj/sync_disk/zjSync/量化/crcl/work_docs/framework-review",
+  "output_last_message": "/Users/zj/sync_disk/zjSync/量化/crcl/work_docs/framework-review/2026-06-17T08-40-05-133172+00-00-framework-review-codex-final.md",
+  "event_log": "/Users/zj/sync_disk/zjSync/量化/crcl/work_docs/framework-review/2026-06-17T08-40-05-133172+00-00-framework-review-codex-events.jsonl",
+  "no_collect": false,
+  "safe_mode": false,
+  "completed_at": "2026-06-17T08:59:04.508751+00:00",
+  "exit_status": 0,
+  "signal": null
+}

@@ -1,0 +1,258 @@
+{
+  "workflow": "daily-monitor",
+  "generated_at": "2026-06-17T00:46:25.476Z",
+  "packet_generated_at": "2026-06-17T00:46:25.469469+00:00",
+  "database": "data/crcl_research.sqlite",
+  "execution_model": "Rust 输出 evidence packet；Node sub agent runner 执行评分、判断、仓位映射和总控合成。",
+  "conclusion": "观察",
+  "action": "不调整研究框架，记录 P0 观察项，等周度复盘确认。",
+  "confidence": "medium",
+  "scenario": null,
+  "position": null,
+  "competition_score": null,
+  "subagents": [
+    {
+      "profile": "data-quality",
+      "title": "采集健康检查",
+      "conclusion": "降级",
+      "action": "先补采或人工核验阻断来源，再进入研究判断。",
+      "findings": [
+        {
+          "metric_code": "COLLECTOR_RUN",
+          "value": "ok=20, warn=1, batch=decision-pack-1781657092747690000-64449",
+          "observed_at": "2026-06-17T00:46:25.469469+00:00",
+          "source": "Rust decision-pack",
+          "source_url": "",
+          "threshold": "warn=0 preferred; ok>0 required",
+          "impact": "本轮存在失败源，结论需降置信度并列 missing_info。",
+          "severity": "warning"
+        },
+        {
+          "metric_code": "SOURCE_RUN_FINCEN_NEWS_ROOM",
+          "value": "network_error",
+          "observed_at": "2026-06-17T00:46:02.282894+00:00",
+          "source": "FinCEN news room",
+          "source_url": "https://www.fincen.gov/news-room",
+          "threshold": "source_runs.status must be ok",
+          "impact": "error sending request for url (https://www.fincen.gov/news-room)",
+          "severity": "warning"
+        },
+        {
+          "metric_code": "P0_CIRCLE_RESERVE_FUND_7D_YIELD",
+          "value": "3.57 percent",
+          "observed_at": "2026-05-29",
+          "source": "SEC EDGAR filing: BlackRock Funds N-MFP3",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/844779/000119312526258597/xslN-MFP3_X01/primary_doc.xml",
+          "threshold": "max age 7 days",
+          "impact": "P0_CIRCLE_RESERVE_FUND_7D_YIELD 数据日期距本轮 19 天，超过 7 天阈值。",
+          "severity": "warning"
+        }
+      ],
+      "missing_info": [
+        "SOURCE_UNREACHABLE_FINCEN_NEWS_ROOM: error sending request for url (https://www.fincen.gov/news-room) (https://www.fincen.gov/news-room)",
+        "P1_EXCHANGE_USDC_BALANCES: Latest collector run failed: CoinGlass API returned code 401: API key missing.; set COINGLASS_API_KEY for the CG-API-KEY header (https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC)",
+        "P0_CIRCLE_RESERVE_FUND_7D_YIELD 过期：P0_CIRCLE_RESERVE_FUND_7D_YIELD 数据日期距本轮 19 天，超过 7 天阈值。"
+      ],
+      "contradictions": [
+        "数据健康 P0 阻断时不得输出增强或 keep。"
+      ]
+    },
+    {
+      "profile": "source",
+      "title": "P0 数据巡检",
+      "conclusion": "观察",
+      "action": "维持观察，等待同类信号二次确认。",
+      "findings": [
+        {
+          "metric_code": "P0_USDC_CIRCULATING_SUPPLY",
+          "value": "75016991485.526 USD",
+          "observed_at": "2026-06-17",
+          "source": "DefiLlama",
+          "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+          "threshold": "P0 主指标",
+          "impact": "USDC 供应为日监主锚。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P0_USDC_7D_CHANGE_PCT",
+          "value": "-1.3685 percent",
+          "observed_at": "2026-06-17",
+          "source": "DefiLlama",
+          "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+          "threshold": "7D、30D、net issuance 共振才降级",
+          "impact": "7D/30D 与净发行同时偏弱，进入赎回压力观察。",
+          "severity": "warning"
+        },
+        {
+          "metric_code": "P0_CIRCLE_USDC_TOTAL_RESERVES",
+          "value": "75100000000 USD",
+          "observed_at": "2026-06-15",
+          "source": "Circle Transparency",
+          "source_url": "https://www.circle.com/transparency",
+          "threshold": "reserves coverage",
+          "impact": "储备规模未触发信用层缺口。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P0_CIRCLE_RESERVE_FUND_7D_YIELD",
+          "value": "3.57 percent",
+          "observed_at": "2026-05-29",
+          "source": "SEC EDGAR filing: BlackRock Funds N-MFP3",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/844779/000119312526258597/xslN-MFP3_X01/primary_doc.xml",
+          "threshold": "BlackRock USDXX 7D yield 最近 7 天内刷新",
+          "impact": "储备基金收益率 19 天未刷新，日监不得写增强。",
+          "severity": "warning"
+        },
+        {
+          "metric_code": "P0_USDC_USD_PRICE",
+          "value": "0.9998 USD",
+          "observed_at": "2026-06-17",
+          "source": "CoinGecko",
+          "source_url": "https://api.coingecko.com/api/v3/simple/price?ids=usd-coin,tether,bitcoin,ethereum,paypal-usd,first-digital-usd,ethena-usde,ondo-us-dollar-yield&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true",
+          "threshold": "warning <0.999, critical <0.995",
+          "impact": "USDC/USD 未触发锚定风险。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P0_CURVE_3POOL_USDC_RATIO",
+          "value": "18.1023 percent",
+          "observed_at": "2026-06-17",
+          "source": "Curve API",
+          "source_url": "https://api.curve.fi/api/getPools/ethereum/main",
+          "threshold": "warning outside 10%-40%, critical outside 5%-50%",
+          "impact": "Curve USDC 比例未触发流动性异常。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P0_CHAIN_STATUS_BASE",
+          "value": "Partially Degraded Service status",
+          "observed_at": "2026-06-15T17:59:12.809Z",
+          "source": "Base",
+          "source_url": "https://status.base.org/api/v2/status.json",
+          "threshold": "status operational",
+          "impact": "链或 Circle 服务状态不是完全正常，日监进入观察。",
+          "severity": "warning"
+        },
+        {
+          "metric_code": "P0_CHAIN_STATUS_SOLANA",
+          "value": "All Systems Operational status",
+          "observed_at": "2026-06-16T21:34:57.927Z",
+          "source": "Solana",
+          "source_url": "https://status.solana.com/api/v2/status.json",
+          "threshold": "status operational",
+          "impact": "链或 Circle 服务状态正常。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P0_CHAIN_STATUS_ETHEREUM",
+          "value": "Operational status",
+          "observed_at": "2026-06-17T00:46:25.460401+00:00",
+          "source": "Ethereum public JSON-RPC",
+          "source_url": "https://ethereum.publicnode.com",
+          "threshold": "status operational",
+          "impact": "链或 Circle 服务状态正常。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P0_CIRCLE_STATUS",
+          "value": "All Systems Operational status",
+          "observed_at": "2026-06-17T00:14:23.762Z",
+          "source": "Circle",
+          "source_url": "https://status.circle.com/api/v2/status.json",
+          "threshold": "status operational",
+          "impact": "链或 Circle 服务状态正常。",
+          "severity": "neutral"
+        }
+      ],
+      "missing_info": [],
+      "contradictions": []
+    },
+    {
+      "profile": "regulatory",
+      "title": "监管与状态事件巡检",
+      "conclusion": "观察",
+      "action": "无监管 P0，维持常规复核。",
+      "findings": [
+        {
+          "metric_code": "EVENT_REGULATORY",
+          "value": "Kyriba and Circle Bring USDC Capabilities to Enterprise Treasury, Unlocking a Path Toward More Intelligent Treasury Decisioning / Congress GENIUS Act page / Press Releases | FDIC.gov",
+          "observed_at": "April 28, 2026",
+          "source": "Circle Pressroom",
+          "source_url": "https://www.circle.com/pressroom/kyriba-and-circle-bring-usdc-capabilities-to-enterprise-treasury-unlocking-a-path-toward-more-intelligent-treasury-decisioning",
+          "threshold": "监管官方事件中无明确限制性条款",
+          "impact": "无新增监管阻断，D6 按中性或沿用处理。",
+          "severity": "neutral"
+        }
+      ],
+      "missing_info": [],
+      "contradictions": []
+    },
+    {
+      "profile": "risk",
+      "title": "日监结论合成",
+      "conclusion": "观察",
+      "action": "不调整研究框架，记录 P0 观察项，等周度复盘确认。",
+      "findings": [
+        {
+          "metric_code": "P0_USDC_7D_CHANGE_PCT",
+          "value": "-1.3685 percent",
+          "observed_at": "2026-06-17",
+          "source": "DefiLlama",
+          "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+          "threshold": "7D、30D、net issuance 共振才降级",
+          "impact": "7D/30D 与净发行同时偏弱，进入赎回压力观察。",
+          "severity": "warning"
+        },
+        {
+          "metric_code": "P0_CIRCLE_RESERVE_FUND_7D_YIELD",
+          "value": "3.57 percent",
+          "observed_at": "2026-05-29",
+          "source": "SEC EDGAR filing: BlackRock Funds N-MFP3",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/844779/000119312526258597/xslN-MFP3_X01/primary_doc.xml",
+          "threshold": "BlackRock USDXX 7D yield 最近 7 天内刷新",
+          "impact": "储备基金收益率 19 天未刷新，日监不得写增强。",
+          "severity": "warning"
+        },
+        {
+          "metric_code": "P0_CHAIN_STATUS_BASE",
+          "value": "Partially Degraded Service status",
+          "observed_at": "2026-06-15T17:59:12.809Z",
+          "source": "Base",
+          "source_url": "https://status.base.org/api/v2/status.json",
+          "threshold": "status operational",
+          "impact": "链或 Circle 服务状态不是完全正常，日监进入观察。",
+          "severity": "warning"
+        }
+      ],
+      "missing_info": [],
+      "contradictions": []
+    }
+  ],
+  "missing_info": [
+    "SOURCE_UNREACHABLE_FINCEN_NEWS_ROOM: error sending request for url (https://www.fincen.gov/news-room) (https://www.fincen.gov/news-room)",
+    "P1_EXCHANGE_USDC_BALANCES: Latest collector run failed: CoinGlass API returned code 401: API key missing.; set COINGLASS_API_KEY for the CG-API-KEY header (https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC)",
+    "P0_CIRCLE_RESERVE_FUND_7D_YIELD 过期：P0_CIRCLE_RESERVE_FUND_7D_YIELD 数据日期距本轮 19 天，超过 7 天阈值。"
+  ],
+  "next_review_trigger": "Circle Transparency 更新、监管官方公告、USDC/USD 偏离、储备收益率刷新或 Base/Circle 状态异常。",
+  "hard_gates": [
+    "USDC/USD 持续折价或 Curve USDC 比例异常时，先走信用层风险，不讨论平台化估值。",
+    "Circle 储备报告异常、延迟或储备基金收益率连续缺失时，结论不得写增强。",
+    "监管最终规则限制收益分享、第三方激励或交易所分销奖励时，直接触发监管 P0 复核。",
+    "单日股价波动不改变研究框架；只有基本面、监管或赎回信号共振才可降级。"
+  ],
+  "quality_gates": [
+    "结论只能是增强、降级、观察或对应的 Bull/Base/Bear/仓位动作，不写笼统利好利空。",
+    "每个判断必须列出指标值、阈值、数据日期和来源。",
+    "存在缺失关键数据时，输出 missing_info 和下次复盘触发，不补乐观推断。",
+    "最终输出必须包含反证或解除条件，便于下次复盘。"
+  ],
+  "evidence_summary": {
+    "collection_batches": 12,
+    "source_runs": 258,
+    "observations": 977,
+    "filings": 184,
+    "events": 37,
+    "missing_items": 2
+  },
+  "final_report": "结论：今日观察。\n\n依据：\n1. 数据健康：本轮存在失败源，结论需降置信度并列 missing_info。\n2. USDC / 储备 / 净发行：USDC 供应为日监主锚。\n3. 锚定、链状态和储备收益：7D/30D 与净发行同时偏弱，进入赎回压力观察。\n4. 监管或公司事件：无新增监管阻断，D6 按中性或沿用处理。\n\n动作：\n不调整研究框架，记录 P0 观察项，等周度复盘确认。\n\n风险：\n数据健康 P0 阻断时不得输出增强或 keep。\n\n下次复盘触发：\nCircle Transparency 更新、监管官方公告、USDC/USD 偏离或同类 P0 信号连续出现。\n"
+}

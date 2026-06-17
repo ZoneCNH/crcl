@@ -76,6 +76,7 @@ CRCL 的研究主线不是“稳定币公司”四个字，而是五个判断：
 运行规则：
 
 1. 先刷新，后判断。先按 `sources.md` 和 `superpowers/specs/data-collection-sop.md` 查询官方源，再套用本框架阈值。
+   使用自动 runner 时，先执行 collector 数据收集编排，再执行 data-quality 和 source 前置检查；collector failure、P0 missing_info 或来源阻断未解除时，不得输出增强或 keep。
 2. 历史日期只作基准。例如 Q1 2026、2026-05-08、2026-05-11 这类日期只能说明当时的预案或样本，不能说明现在仍是当前状态。
 3. 禁止把预案当事实。`superpowers/plans/` 里的单次事件脚本是事件响应模板，事件过去后只作复盘模板。
 4. 禁止静态延用"当前"结论。遇到"当前情景"、"当前评分"、"当前策略"时，必须重新计算并写明数据日期。

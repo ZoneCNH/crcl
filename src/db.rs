@@ -506,6 +506,40 @@ impl Database {
             .map_err(Into::into)
     }
 
+    pub fn recent_observations(&self, limit: usize) -> Result<Vec<RecentObservation>> {
+        let mut stmt = self.conn.prepare(
+            r#"
+            SELECT o.metric_code, o.metric_name, o.priority, o.category, o.value_num,
+                   o.value_text, o.unit, o.observed_at, o.source, o.source_url,
+                   o.created_at, r.batch_id, r.profile, r.selector
+            FROM observations o
+            LEFT JOIN source_runs r ON r.id = o.run_id
+            ORDER BY o.id DESC
+            LIMIT ?1
+            "#,
+        )?;
+        let rows = stmt.query_map(params![limit as i64], |row| {
+            Ok(RecentObservation {
+                metric_code: row.get(0)?,
+                metric_name: row.get(1)?,
+                priority: row.get(2)?,
+                category: row.get(3)?,
+                value_num: row.get(4)?,
+                value_text: row.get(5)?,
+                unit: row.get(6)?,
+                observed_at: row.get(7)?,
+                source: row.get(8)?,
+                source_url: row.get(9)?,
+                created_at: row.get(10)?,
+                batch_id: row.get(11)?,
+                profile: row.get(12)?,
+                selector: row.get(13)?,
+            })
+        })?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
+    }
+
     pub fn recent_filings(&self, limit: usize) -> Result<Vec<RecentFiling>> {
         let mut stmt = self.conn.prepare(
             r#"

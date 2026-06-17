@@ -56,6 +56,43 @@ cargo run --release -- agent-context --profile source --format json
 
 `agent-context` 会写入 `collection_batches`，每轮采集带 `batch_id`、`profile` 和 `selector`。输出中的 `latest_observations` 按 `metric_code` 去重，只保留当前最新事实；`recent_source_runs`、`recent_events` 和 `missing_items` 会按 profile 做基础过滤。
 
+数据收集 agent 入口：
+
+```bash
+cargo run --release -- agent-context --profile collector --format json
+```
+
+`collector` profile 覆盖 `all` 采集范围，用来执行或确认本轮数据收集状态。真实 subagent 工作流中，collector 应先生成或确认同一批 `decision-pack` evidence packet；后续 data-quality、source、financial、regulatory、competition、platform 和 risk agent 必须使用 `--no-collect` 读取同一批数据。
+
+决策工作流统一入口：
+
+```bash
+cargo run --release -- decision-pack --workflow daily-monitor
+cargo run --release -- decision-pack --workflow weekly-review
+cargo run --release -- decision-pack --workflow quarterly-earnings
+cargo run --release -- decision-pack --workflow valuation-decision
+```
+
+`decision-pack` 是工具层输出，不直接替代 sub agent 判断。它会生成 collect scope、subagent dispatch、必读文档、硬性门槛、证据快照、历史 observation 和最终输出模板。只读已有数据库时加 `--no-collect`，给调度层消费时加 `--format json`。
+
+自动执行层入口：
+
+```bash
+cargo run --release -- agent-run --workflow daily-monitor
+cargo run --release -- agent-run --workflow weekly-review
+cargo run --release -- agent-run --workflow quarterly-earnings
+cargo run --release -- agent-run --workflow valuation-decision
+```
+
+`agent-run` 会调用 Rust `decision-pack` 生成同一批 evidence packet，再由 Rust 规则化总控执行 collector、data-quality、source、financial、regulatory、competition、platform、risk/orchestrator 等合同，直接输出日监结论、周度复盘、季度财报判断和估值/仓位动作。
+
+如果只需要 Rust 证据包，使用：
+
+```bash
+cargo run --release -- decision-pack --workflow daily-monitor
+cargo run --release -- decision-pack --workflow weekly-review --format json
+```
+
 SEC 请求建议设置更明确的 User-Agent：
 
 ```bash
@@ -78,7 +115,9 @@ export CRCL_DATA_USER_AGENT="crcl-data-collector/0.1 your-email@example.com"
 | P1/P2 | Circle 10-Q/10-K reserve income、distribution costs、RLDC、Adjusted EBITDA、USDC 期末/平均流通量、onchain volume、filing-period velocity；Coinbase stablecoin revenue、receivables、client custodial funds、customer USDC on platform | SEC EDGAR inline XBRL + filing 正文表格 | `observations` |
 | P1 | USDC active addresses、transaction count、transfer count | CoinMetrics Community API | `observations` |
 | P1 | USDC adjusted transfer volume（最近完整 UTC 日，附 30D 合计属性） | Visa Onchain Analytics / Allium JSON API | `observations` |
-| P1 | Exchange USDC balances | Glassnode Studio public latest value metadata | `observations` |
+| P1 | Exchange USDC balances（collector 已接入，需 key 才会落库） | CoinGlass Exchange Balance List v4 API；需 `COINGLASS_API_KEY` | `observations` / `missing_items` |
+| P1 | CPN annualized TPV | Circle Q1 2026 pressroom / earnings disclosure | `observations` |
+| P1 | Arc public network / mainnet status、testnet usage | Arc 官网；Circle Q4/FY2025 pressroom 兜底 | `observations` |
 | P1 | Tokenized U.S. Treasury debt AUM、BlackRock BUIDL AUM | RWA.xyz public treasuries page `__NEXT_DATA__` | `observations` |
 | P0 | Base / Solana / Circle status | Statuspage JSON | `observations` |
 | P0 | Ethereum chain status | Public Ethereum JSON-RPC latest block freshness check | `observations` |
@@ -86,6 +125,7 @@ export CRCL_DATA_USER_AGENT="crcl-data-collector/0.1 your-email@example.com"
 | P0 | 监管与公司核心页面可达性检查 | OCC / Treasury / FinCEN / OFAC / Fed / SEC / CFTC RSS / FDIC / GovInfo GENIUS Act / Circle IR | `source_runs` + `events` |
 | P0 | CRCL price / volume | Yahoo Finance chart endpoint | `observations`；若 429 会写 `source_runs` 错误 |
 | P2 | CRCL short interest、days to cover、short-interest change | FINRA consolidated short interest Query API | `observations` |
+| P2 | CRCL institutional ownership 聚合指标 | MarketBeat public institutional ownership page | `observations` |
 
 ## 当前缺口
 
@@ -96,7 +136,7 @@ export CRCL_DATA_USER_AGENT="crcl-data-collector/0.1 your-email@example.com"
 | --- | --- | --- | --- |
 | P1 | Dune 仪表盘截图、周度 adjusted velocity 交叉验证 | 日度 adjusted transfer volume 已用 Visa / Allium 自动落库；Dune 仍适合周报截图和口径核对 | 增加 `DUNE_API_KEY` 配置和固定 query id |
 | P1 | CoinMetrics adjusted transfer value 交叉验证 | Community API 对 `TxTfrValAdjUSD` 返回凭证限制；主自动源改用 Visa / Allium | 如需严谨双源，接入 CoinMetrics Pro |
-| P1 | Exchange USDC balances 付费源交叉验证 | Glassnode Studio public latest value 已自动落库；Nansen、TokenTerminal、Glassnode API 可作为付费确认源 | 增加 `GLASSNODE_API_KEY`、Nansen 或 TokenTerminal API |
+| P1 | Exchange USDC balances 凭证 | 已改用 CoinGlass Exchange Balance List；无 key 时接口返回 `API key missing` | 配置 `COINGLASS_API_KEY`；Nansen / TokenTerminal / Glassnode API 可作为付费确认源 |
 
 ## 数据库表
 
@@ -129,4 +169,6 @@ cargo test --release
 - Treasury XML 最新收益率行解析
 - NY Fed SOFR JSON 解析
 - Visa Onchain Analytics / Allium USDC adjusted transfer volume 解析
-- Glassnode Studio USDC exchange balance latest value 解析
+- CoinGlass USDC exchange balance list 解析和无 key 错误提示
+- Circle pressroom CPN TPV、Arc mainnet / testnet metrics 解析
+- MarketBeat CRCL institutional ownership 聚合页解析

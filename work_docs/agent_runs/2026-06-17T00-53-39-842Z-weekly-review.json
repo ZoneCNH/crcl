@@ -1,0 +1,549 @@
+{
+  "workflow": "weekly-review",
+  "generated_at": "2026-06-17T00:53:39.842Z",
+  "packet_generated_at": "2026-06-17T00:53:25.054364+00:00",
+  "database": "data/crcl_research.sqlite",
+  "execution_model": "Rust 输出 evidence packet；Node sub agent runner 执行评分、判断、仓位映射和总控合成。",
+  "conclusion": "观察",
+  "action": "竞争结构中性偏弱，暂停上调估值倍数。",
+  "confidence": "low",
+  "scenario": null,
+  "position": null,
+  "competition_score": 40,
+  "subagents": [
+    {
+      "profile": "data-quality",
+      "title": "采集健康检查",
+      "conclusion": "观察",
+      "action": "允许继续判断，但必须保留 missing_info 和降置信度。",
+      "findings": [
+        {
+          "metric_code": "COLLECTOR_RUN",
+          "value": "ok=19, warn=2, batch=decision-pack-1781657502940570000-75633",
+          "observed_at": "2026-06-17T00:53:25.054364+00:00",
+          "source": "Rust decision-pack",
+          "source_url": "",
+          "threshold": "warn=0 preferred; ok>0 required",
+          "impact": "本轮存在失败源，结论需降置信度并列 missing_info。",
+          "severity": "warning"
+        },
+        {
+          "metric_code": "SOURCE_RUN_FINRA_CONSOLIDATED_SHORT_INTEREST",
+          "value": "network_error",
+          "observed_at": "2026-06-17T00:52:13.251966+00:00",
+          "source": "FINRA consolidated short interest",
+          "source_url": "https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest",
+          "threshold": "source_runs.status must be ok",
+          "impact": "error sending request for url (https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest)",
+          "severity": "warning"
+        },
+        {
+          "metric_code": "P0_CIRCLE_RESERVE_FUND_7D_YIELD",
+          "value": "3.57 percent",
+          "observed_at": "2026-05-29",
+          "source": "SEC EDGAR filing: BlackRock Funds N-MFP3",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/844779/000119312526258597/xslN-MFP3_X01/primary_doc.xml",
+          "threshold": "max age 7 days",
+          "impact": "P0_CIRCLE_RESERVE_FUND_7D_YIELD 数据日期距本轮 19 天，超过 7 天阈值。",
+          "severity": "warning"
+        }
+      ],
+      "missing_info": [
+        "P1_EXCHANGE_USDC_BALANCES: Latest collector run failed: CoinGlass API returned code 401: API key missing.; set COINGLASS_API_KEY for the CG-API-KEY header (https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC)",
+        "P0_CIRCLE_RESERVE_FUND_7D_YIELD 过期：P0_CIRCLE_RESERVE_FUND_7D_YIELD 数据日期距本轮 19 天，超过 7 天阈值。"
+      ],
+      "contradictions": []
+    },
+    {
+      "profile": "source",
+      "title": "P0 数据巡检",
+      "conclusion": "观察",
+      "action": "维持观察，等待同类信号二次确认。",
+      "findings": [
+        {
+          "metric_code": "P0_USDC_CIRCULATING_SUPPLY",
+          "value": "75016991485.526 USD",
+          "observed_at": "2026-06-17",
+          "source": "DefiLlama",
+          "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+          "threshold": "P0 主指标",
+          "impact": "USDC 供应为日监主锚。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P0_USDC_7D_CHANGE_PCT",
+          "value": "-1.3685 percent",
+          "observed_at": "2026-06-17",
+          "source": "DefiLlama",
+          "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+          "threshold": "7D、30D、net issuance 共振才降级",
+          "impact": "7D/30D 与净发行同时偏弱，进入赎回压力观察。",
+          "severity": "warning"
+        },
+        {
+          "metric_code": "P0_CIRCLE_RESERVE_FUND_7D_YIELD",
+          "value": "3.57 percent",
+          "observed_at": "2026-05-29",
+          "source": "SEC EDGAR filing: BlackRock Funds N-MFP3",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/844779/000119312526258597/xslN-MFP3_X01/primary_doc.xml",
+          "threshold": "BlackRock USDXX 7D yield 最近 7 天内刷新",
+          "impact": "储备基金收益率 19 天未刷新，日监不得写增强。",
+          "severity": "warning"
+        }
+      ],
+      "missing_info": [
+        "P0_CIRCLE_USDC_TOTAL_RESERVES 缺失。",
+        "P0_USDC_USD_PRICE 缺失。",
+        "P0_CURVE_3POOL_USDC_RATIO 缺失。"
+      ],
+      "contradictions": []
+    },
+    {
+      "profile": "competition",
+      "title": "D1-D7 竞争评分",
+      "conclusion": "观察",
+      "action": "暂停上调估值倍数。",
+      "findings": [
+        {
+          "metric_code": "P1_USDC_MARKET_CAP_SHARE",
+          "value": "23.8978 percent",
+          "observed_at": "2026-06-17",
+          "source": "DefiLlama",
+          "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+          "threshold": "4 周趋势",
+          "impact": "D1 市占率和 USDC/USDT ratio 证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_USDC_USDT_RATIO",
+          "value": "0.4024 ratio",
+          "observed_at": "2026-06-17",
+          "source": "DefiLlama",
+          "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+          "threshold": "4 周趋势",
+          "impact": "D1 市占率和 USDC/USDT ratio 证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P0_USDC_CIRCULATING_SUPPLY",
+          "value": "75016991485.526 USD",
+          "observed_at": "2026-06-17",
+          "source": "DefiLlama",
+          "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+          "threshold": "4 周趋势",
+          "impact": "D1 市占率和 USDC/USDT ratio 证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_STABLECOIN_TOTAL_MARKET_CAP",
+          "value": "313907147189.8343 USD",
+          "observed_at": "2026-06-17",
+          "source": "DefiLlama",
+          "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+          "threshold": "USDT dominance",
+          "impact": "D2 USDT 相对威胁证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_USDT_MARKET_CAP",
+          "value": "186407772527.6612 USD",
+          "observed_at": "2026-06-17",
+          "source": "DefiLlama",
+          "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+          "threshold": "USDT dominance",
+          "impact": "D2 USDT 相对威胁证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P2_CIRCLE_RLDC_MARGIN",
+          "value": "41.3973 percent",
+          "observed_at": "2026-03-31",
+          "source": "SEC EDGAR filing",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/1876042/000187604226000150/crcl-20260331.htm",
+          "threshold": "RLDC margin + Base share",
+          "impact": "D3 分销渠道议价证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_USDC_CHAIN_BASE",
+          "value": "4269696525.6234 USD",
+          "observed_at": "2026-06-17",
+          "source": "DefiLlama",
+          "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+          "threshold": "RLDC margin + Base share",
+          "impact": "D3 分销渠道议价证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P0_USDC_CIRCULATING_SUPPLY",
+          "value": "75016991485.526 USD",
+          "observed_at": "2026-06-17",
+          "source": "DefiLlama",
+          "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+          "threshold": "RLDC margin + Base share",
+          "impact": "D3 分销渠道议价证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P0_CIRCLE_USDC_7D_NET_ISSUANCE",
+          "value": "-1050000000 USD",
+          "observed_at": "2026-06-15",
+          "source": "Circle Transparency",
+          "source_url": "https://www.circle.com/transparency",
+          "threshold": "AUM + net issuance",
+          "impact": "D4 收益型稳定币和 RWA 蚕食证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_COMPETITOR_USDE_MARKET_CAP",
+          "value": "4492992507.3802 USD",
+          "observed_at": "2026-06-17",
+          "source": "CoinGecko",
+          "source_url": "https://api.coingecko.com/api/v3/simple/price?ids=usd-coin,tether,bitcoin,ethereum,paypal-usd,first-digital-usd,ethena-usde,ondo-us-dollar-yield&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true",
+          "threshold": "AUM + net issuance",
+          "impact": "D4 收益型稳定币和 RWA 蚕食证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_TOKENIZED_TREASURY_AUM",
+          "value": "15661201996.4064 USD",
+          "observed_at": "2026-06-16",
+          "source": "RWA.xyz public treasuries page",
+          "source_url": "https://app.rwa.xyz/treasuries",
+          "threshold": "AUM + net issuance",
+          "impact": "D4 收益型稳定币和 RWA 蚕食证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_TOKENIZED_TREASURY_BUIDL_AUM",
+          "value": "2369578601.0105 USD",
+          "observed_at": "2026-06-16",
+          "source": "RWA.xyz public treasuries page",
+          "source_url": "https://app.rwa.xyz/treasuries",
+          "threshold": "AUM + net issuance",
+          "impact": "D4 收益型稳定币和 RWA 蚕食证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_USDC_ADJUSTED_TRANSFER_VOLUME",
+          "value": "5472575177.4507 USD",
+          "observed_at": "2026-06-16",
+          "source": "Visa Onchain Analytics / Allium",
+          "source_url": "https://visaonchainanalytics.com/transactions",
+          "threshold": "transfer volume + activity",
+          "impact": "D5 链生态使用强度证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_USDC_ACTIVE_ADDRESSES",
+          "value": "2774677 count",
+          "observed_at": "2026-06-15",
+          "source": "CoinMetrics Community API",
+          "source_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=usdc&metrics=AdrActCnt,TxCnt,TxTfrCnt&frequency=1d&page_size=1",
+          "threshold": "transfer volume + activity",
+          "impact": "D5 链生态使用强度证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_USDC_TRANSACTION_COUNT",
+          "value": "7315351 count",
+          "observed_at": "2026-06-15",
+          "source": "CoinMetrics Community API",
+          "source_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=usdc&metrics=AdrActCnt,TxCnt,TxTfrCnt&frequency=1d&page_size=1",
+          "threshold": "transfer volume + activity",
+          "impact": "D5 链生态使用强度证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "EVENT_REGULATORY",
+          "value": "Kyriba and Circle Bring USDC Capabilities to Enterprise Treasury, Unlocking a Path Toward More Intelligent Treasury Decisioning / News | FinCEN.gov / Congress GENIUS Act page",
+          "observed_at": "April 28, 2026",
+          "source": "Circle Pressroom",
+          "source_url": "https://www.circle.com/pressroom/kyriba-and-circle-bring-usdc-capabilities-to-enterprise-treasury-unlocking-a-path-toward-more-intelligent-treasury-decisioning",
+          "threshold": "监管官方事件中无明确限制性条款",
+          "impact": "无新增监管阻断，D6 按中性或沿用处理。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P2_CIRCLE_OTHER_REVENUE_SHARE",
+          "value": "5.9967 percent",
+          "observed_at": "2026-03-31",
+          "source": "SEC EDGAR filing",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/1876042/000187604226000150/crcl-20260331.htm",
+          "threshold": "Other revenue + CPN/Arc + short interest",
+          "impact": "D7 平台化和筹码验证证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_CPN_ANNUALIZED_TPV",
+          "value": "8300000000 USD/year",
+          "observed_at": "2026-03-31",
+          "source": "Circle press release",
+          "source_url": "https://www.circle.com/pressroom/circle-reports-first-quarter-2026-results",
+          "threshold": "Other revenue + CPN/Arc + short interest",
+          "impact": "D7 平台化和筹码验证证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_ARC_PUBLIC_NETWORK_STATUS",
+          "value": "public testnet status",
+          "observed_at": "2026-06-17",
+          "source": "Arc website",
+          "source_url": "https://www.arc.io/",
+          "threshold": "Other revenue + CPN/Arc + short interest",
+          "impact": "D7 平台化和筹码验证证据。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P2_FINRA_SHORT_INTEREST",
+          "value": "15348729 shares",
+          "observed_at": "2026-05-29",
+          "source": "FINRA consolidated short interest",
+          "source_url": "https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest",
+          "threshold": "Other revenue + CPN/Arc + short interest",
+          "impact": "D7 平台化和筹码验证证据。",
+          "severity": "neutral"
+        }
+      ],
+      "missing_info": [
+        "D7 当前 FINRA short interest 是股数，不是流通股占比，不参与评分。"
+      ],
+      "contradictions": [],
+      "competition_score": 40,
+      "scorecard": [
+        {
+          "dimension": "D1",
+          "label": "USDC 市占率趋势",
+          "weight": 25,
+          "score": 25,
+          "judgement": "USDC share change=0.05ppt, ratio change=-0.0003",
+          "missing_info": []
+        },
+        {
+          "dimension": "D2",
+          "label": "USDT 相对威胁",
+          "weight": 15,
+          "score": 50,
+          "judgement": "USDT dominance=59.38%, change=0.17ppt",
+          "missing_info": []
+        },
+        {
+          "dimension": "D3",
+          "label": "分销渠道议价",
+          "weight": 20,
+          "score": 75,
+          "judgement": "三项取最低分，RLDC margin 为主锚",
+          "missing_info": []
+        },
+        {
+          "dimension": "D4",
+          "label": "收益型稳定币蚕食",
+          "weight": 15,
+          "score": 25,
+          "judgement": "以净发行压力为主，AUM 缺失时保守标注",
+          "missing_info": []
+        },
+        {
+          "dimension": "D5",
+          "label": "链生态健康",
+          "weight": 10,
+          "score": 0,
+          "judgement": "worst activity change=-82.58%",
+          "missing_info": []
+        },
+        {
+          "dimension": "D6",
+          "label": "监管壁垒",
+          "weight": 10,
+          "score": 50,
+          "judgement": "无新增监管 P0，沿用中性",
+          "missing_info": []
+        },
+        {
+          "dimension": "D7",
+          "label": "平台化验证",
+          "weight": 5,
+          "score": 50,
+          "judgement": "Other revenue 为主锚，筹码只作约束",
+          "missing_info": [
+            "D7 当前 FINRA short interest 是股数，不是流通股占比，不参与评分。"
+          ]
+        }
+      ]
+    },
+    {
+      "profile": "financial",
+      "title": "财务桥与分销经济性",
+      "conclusion": "增强",
+      "action": "维持财务桥观察，等待下一季 SEC filing 或管理层披露。",
+      "findings": [
+        {
+          "metric_code": "P2_CIRCLE_RLDC_MARGIN",
+          "value": "41.3973 percent",
+          "observed_at": "2026-03-31",
+          "source": "SEC EDGAR filing",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/1876042/000187604226000150/crcl-20260331.htm",
+          "threshold": "downgrade <38%, neutral 38-40%, strengthen >40%",
+          "impact": "RLDC margin 高于 40%，分销经济性可支撑框架。",
+          "severity": "positive"
+        },
+        {
+          "metric_code": "P2_CIRCLE_OTHER_REVENUE_SHARE",
+          "value": "5.9967 percent",
+          "observed_at": "2026-03-31",
+          "source": "SEC EDGAR filing",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/1876042/000187604226000150/crcl-20260331.htm",
+          "threshold": "platform switch condition starts at >10%",
+          "impact": "Other revenue share 处于 5-10%，只给早期期权价值。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P0_CIRCLE_RESERVE_FUND_7D_YIELD",
+          "value": "3.57 percent",
+          "observed_at": "2026-05-29",
+          "source": "SEC EDGAR filing: BlackRock Funds N-MFP3",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/844779/000119312526258597/xslN-MFP3_X01/primary_doc.xml",
+          "threshold": "reserve yield proxy",
+          "impact": "储备收益率用于估值和利率压力复核。",
+          "severity": "neutral"
+        }
+      ],
+      "missing_info": [],
+      "contradictions": []
+    },
+    {
+      "profile": "regulatory",
+      "title": "监管与状态事件巡检",
+      "conclusion": "观察",
+      "action": "无监管 P0，维持常规复核。",
+      "findings": [
+        {
+          "metric_code": "EVENT_REGULATORY",
+          "value": "Kyriba and Circle Bring USDC Capabilities to Enterprise Treasury, Unlocking a Path Toward More Intelligent Treasury Decisioning / News | FinCEN.gov / Congress GENIUS Act page",
+          "observed_at": "April 28, 2026",
+          "source": "Circle Pressroom",
+          "source_url": "https://www.circle.com/pressroom/kyriba-and-circle-bring-usdc-capabilities-to-enterprise-treasury-unlocking-a-path-toward-more-intelligent-treasury-decisioning",
+          "threshold": "监管官方事件中无明确限制性条款",
+          "impact": "无新增监管阻断，D6 按中性或沿用处理。",
+          "severity": "neutral"
+        }
+      ],
+      "missing_info": [],
+      "contradictions": []
+    },
+    {
+      "profile": "platform",
+      "title": "CPN/Arc 平台化验证",
+      "conclusion": "观察",
+      "action": "维持期权价值，不上调主框架。",
+      "findings": [
+        {
+          "metric_code": "P2_CIRCLE_OTHER_REVENUE_SHARE",
+          "value": "5.9967 percent",
+          "observed_at": "2026-03-31",
+          "source": "SEC EDGAR filing",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/1876042/000187604226000150/crcl-20260331.htm",
+          "threshold": "Other revenue share >10% 才满足切换条件之一",
+          "impact": "Other revenue share 尚不足以单独切换平台化主框架。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_CPN_ANNUALIZED_TPV",
+          "value": "8300000000 USD/year",
+          "observed_at": "2026-03-31",
+          "source": "Circle press release",
+          "source_url": "https://www.circle.com/pressroom/circle-reports-first-quarter-2026-results",
+          "threshold": "TPV cannot replace revenue",
+          "impact": "CPN TPV 只证明使用量，必须等待收入或费率模型验证。",
+          "severity": "neutral"
+        },
+        {
+          "metric_code": "P1_ARC_PUBLIC_NETWORK_STATUS",
+          "value": "public testnet status",
+          "observed_at": "2026-06-17",
+          "source": "Arc website",
+          "source_url": "https://www.arc.io/",
+          "threshold": "test/public network is not revenue",
+          "impact": "只有 Arc public/test network 状态，不能当作收入。",
+          "severity": "neutral"
+        }
+      ],
+      "missing_info": [
+        "P1_ARC_MAINNET_STATUS 缺失，Arc 收入期权未验证。"
+      ],
+      "contradictions": []
+    },
+    {
+      "profile": "orchestrator",
+      "title": "周度总控合成",
+      "conclusion": "观察",
+      "action": "竞争结构中性偏弱，暂停上调估值倍数。",
+      "findings": [
+        {
+          "metric_code": "competition_score",
+          "value": "40",
+          "observed_at": "2026-06-17T00:53:39.841Z",
+          "source": "subagent scorecard",
+          "source_url": "",
+          "threshold": "75+/55-74/40-54/<40",
+          "impact": "中性偏弱",
+          "severity": "warning"
+        },
+        {
+          "metric_code": "P2_CIRCLE_RLDC_MARGIN",
+          "value": "41.3973 percent",
+          "observed_at": "2026-03-31",
+          "source": "SEC EDGAR filing",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/1876042/000187604226000150/crcl-20260331.htm",
+          "threshold": "downgrade <38%, neutral 38-40%, strengthen >40%",
+          "impact": "RLDC margin 高于 40%，分销经济性可支撑框架。",
+          "severity": "positive"
+        },
+        {
+          "metric_code": "P2_CIRCLE_OTHER_REVENUE_SHARE",
+          "value": "5.9967 percent",
+          "observed_at": "2026-03-31",
+          "source": "SEC EDGAR filing",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/1876042/000187604226000150/crcl-20260331.htm",
+          "threshold": "Other revenue share >10% 才满足切换条件之一",
+          "impact": "Other revenue share 尚不足以单独切换平台化主框架。",
+          "severity": "neutral"
+        }
+      ],
+      "missing_info": [],
+      "contradictions": []
+    }
+  ],
+  "missing_info": [
+    "P1_EXCHANGE_USDC_BALANCES: Latest collector run failed: CoinGlass API returned code 401: API key missing.; set COINGLASS_API_KEY for the CG-API-KEY header (https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC)",
+    "P0_CIRCLE_RESERVE_FUND_7D_YIELD 过期：P0_CIRCLE_RESERVE_FUND_7D_YIELD 数据日期距本轮 19 天，超过 7 天阈值。",
+    "P0_CIRCLE_USDC_TOTAL_RESERVES 缺失。",
+    "P0_USDC_USD_PRICE 缺失。",
+    "P0_CURVE_3POOL_USDC_RATIO 缺失。",
+    "D7 当前 FINRA short interest 是股数，不是流通股占比，不参与评分。",
+    "P1_ARC_MAINNET_STATUS 缺失，Arc 收入期权未验证。",
+    "P2_FINRA_SHORT_INTEREST: Latest collector run failed: error sending request for url (https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest): operation timed out (https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest)"
+  ],
+  "next_review_trigger": "USDC 市占率连续变化、competition score 跨档、RLDC margin 更新、监管 P0 或 CPN/Arc 收入披露。",
+  "hard_gates": [
+    "competition score 必须由 D1-D7 逐项打分得出，缺失维度写 missing_info 并按可得权重归一。",
+    "Base 链增长不能单独上调结论；必须同时检查总 USDC 份额和 RLDC margin。",
+    "USDC 份额连续 4 周下降、净赎回扩大或 competition score 跌破 40 时，进入降级复核。",
+    "D3 和 D7 必须与最新 RLDC margin、Other revenue share 保持一致。"
+  ],
+  "quality_gates": [
+    "结论只能是增强、降级、观察或对应的 Bull/Base/Bear/仓位动作，不写笼统利好利空。",
+    "每个判断必须列出指标值、阈值、数据日期和来源。",
+    "存在缺失关键数据时，输出 missing_info 和下次复盘触发，不补乐观推断。",
+    "最终输出必须包含反证或解除条件，便于下次复盘。"
+  ],
+  "evidence_summary": {
+    "collection_batches": 13,
+    "source_runs": 292,
+    "observations": 1111,
+    "filings": 184,
+    "events": 38,
+    "missing_items": 2
+  },
+  "final_report": "结论：本周增长质量中性 / 观察。\n\ncompetition score：40，中性偏弱\nD1 USDC 市占率趋势: 25 (USDC share change=0.05ppt, ratio change=-0.0003)\nD2 USDT 相对威胁: 50 (USDT dominance=59.38%, change=0.17ppt)\nD3 分销渠道议价: 75 (三项取最低分，RLDC margin 为主锚)\nD4 收益型稳定币蚕食: 25 (以净发行压力为主，AUM 缺失时保守标注)\nD5 链生态健康: 0 (worst activity change=-82.58%)\nD6 监管壁垒: 50 (无新增监管 P0，沿用中性)\nD7 平台化验证: 50 (Other revenue 为主锚，筹码只作约束)\n\n依据：\n1. 数据健康：本轮存在失败源，结论需降置信度并列 missing_info。\n2. 事实锚：USDC 供应为日监主锚。\n3. USDC 供应、市占率和 USDC/USDT ratio：25，USDC share change=0.05ppt, ratio change=-0.0003\n4. 链上使用强度和增长来源：0，worst activity change=-82.58%\n5. DeFi / 交易所 / 收益型稳定币资金流：25，以净发行压力为主，AUM 缺失时保守标注\n6. 渠道议价和平台化证据：RLDC margin 高于 40%，分销经济性可支撑框架。 / Other revenue share 尚不足以单独切换平台化主框架。\n7. 监管壁垒：无新增监管阻断，D6 按中性或沿用处理。\n\n动作：\n竞争结构中性偏弱，暂停上调估值倍数。\n\n风险：\n无覆盖性反证，仍需等财报验证。\n\n下周重点：\nUSDC 市占率趋势、RLDC margin 沿用口径、Other revenue share、CoinGlass 交易所余额缺口和监管官方事件。\n"
+}

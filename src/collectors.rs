@@ -2,19 +2,20 @@ use crate::SourceSelector;
 use crate::db::Database;
 use crate::models::{Event, Filing, MissingItem, Observation, SourceRun};
 use crate::parsing::{
-    page_title, parse_circle_pressroom, parse_circle_sec_filing, parse_circle_transparency,
-    parse_coinbase_sec_filing, parse_coingecko_simple_price, parse_coinmetrics_usdc_activity,
-    parse_curve_3pool, parse_defillama_protocol_usdc_deposits, parse_defillama_stablecoins,
-    parse_ethereum_latest_block, parse_finra_short_interest, parse_glassnode_exchange_balance,
-    parse_nyfed_sofr, parse_rwa_treasuries, parse_sec_blackrock_nmfp3_filing,
-    parse_sec_submissions, parse_statuspage, parse_treasury_yield_curve,
-    parse_visa_allium_usdc_adjusted_transfer_volume, parse_yahoo_chart,
+    page_title, parse_arc_public_status, parse_circle_platform_metrics, parse_circle_pressroom,
+    parse_circle_sec_filing, parse_circle_transparency, parse_coinbase_sec_filing,
+    parse_coingecko_simple_price, parse_coinglass_exchange_balance,
+    parse_coinmetrics_usdc_activity, parse_curve_3pool, parse_defillama_protocol_usdc_deposits,
+    parse_defillama_stablecoins, parse_ethereum_latest_block, parse_finra_short_interest,
+    parse_marketbeat_institutional_ownership, parse_nyfed_sofr, parse_rwa_treasuries,
+    parse_sec_blackrock_nmfp3_filing, parse_sec_submissions, parse_statuspage,
+    parse_treasury_yield_curve, parse_visa_allium_usdc_adjusted_transfer_volume, parse_yahoo_chart,
 };
 use anyhow::{Context, Result, anyhow};
 use chrono::{Datelike, Utc};
 use reqwest::header::{ACCEPT, ACCEPT_LANGUAGE};
 use serde_json::json;
-use std::process::Command;
+use std::env;
 
 pub struct CollectorContext<'a> {
     pub db: &'a Database,
@@ -60,7 +61,10 @@ pub async fn run_collectors(
         jobs.push(CollectorJob::RwaTreasuries);
         jobs.push(CollectorJob::Yahoo);
         jobs.push(CollectorJob::FinraShortInterest);
-        jobs.push(CollectorJob::GlassnodeExchangeBalance);
+        jobs.push(CollectorJob::CoinGlassExchangeBalance);
+        jobs.push(CollectorJob::CirclePlatformMetrics);
+        jobs.push(CollectorJob::ArcPublicStatus);
+        jobs.push(CollectorJob::MarketBeatInstitutionalOwnership);
     }
     if matches!(selector, SourceSelector::All | SourceSelector::Rates) {
         jobs.push(CollectorJob::Treasury);
@@ -117,7 +121,10 @@ fn source_selector_for_job(job: CollectorJob) -> SourceSelector {
         | CollectorJob::RwaTreasuries
         | CollectorJob::Yahoo
         | CollectorJob::FinraShortInterest
-        | CollectorJob::GlassnodeExchangeBalance => SourceSelector::Market,
+        | CollectorJob::CoinGlassExchangeBalance
+        | CollectorJob::CirclePlatformMetrics
+        | CollectorJob::ArcPublicStatus
+        | CollectorJob::MarketBeatInstitutionalOwnership => SourceSelector::Market,
         CollectorJob::Treasury | CollectorJob::NyFed | CollectorJob::BlackRockNmfp => {
             SourceSelector::Rates
         }
@@ -150,7 +157,10 @@ enum CollectorJob {
     RwaTreasuries,
     Yahoo,
     FinraShortInterest,
-    GlassnodeExchangeBalance,
+    CoinGlassExchangeBalance,
+    CirclePlatformMetrics,
+    ArcPublicStatus,
+    MarketBeatInstitutionalOwnership,
     Treasury,
     NyFed,
     BlackRockNmfp,
@@ -176,7 +186,12 @@ async fn run_job(ctx: &CollectorContext<'_>, job: CollectorJob) -> Result<()> {
         CollectorJob::RwaTreasuries => collect_rwa_treasuries(ctx).await,
         CollectorJob::Yahoo => collect_yahoo(ctx).await,
         CollectorJob::FinraShortInterest => collect_finra_short_interest(ctx).await,
-        CollectorJob::GlassnodeExchangeBalance => collect_glassnode_exchange_balance(ctx).await,
+        CollectorJob::CoinGlassExchangeBalance => collect_coinglass_exchange_balance(ctx).await,
+        CollectorJob::CirclePlatformMetrics => collect_circle_platform_metrics(ctx).await,
+        CollectorJob::ArcPublicStatus => collect_arc_public_status(ctx).await,
+        CollectorJob::MarketBeatInstitutionalOwnership => {
+            collect_marketbeat_institutional_ownership(ctx).await
+        }
         CollectorJob::Treasury => collect_treasury(ctx).await,
         CollectorJob::NyFed => collect_nyfed(ctx).await,
         CollectorJob::BlackRockNmfp => collect_blackrock_nmfp(ctx).await,
@@ -314,11 +329,37 @@ fn job_failure_gaps(
             "P2",
             "https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest",
         )],
-        CollectorJob::GlassnodeExchangeBalance => vec![(
+        CollectorJob::CoinGlassExchangeBalance => vec![(
             "P1_EXCHANGE_USDC_BALANCES",
             "Exchange USDC balances",
             "P1",
-            "https://studio.glassnode.com/charts/distribution.BalanceExchanges?a=USDC",
+            "https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC",
+        )],
+        CollectorJob::CirclePlatformMetrics => vec![(
+            "P1_CPN_ANNUALIZED_TPV",
+            "Circle Payments Network annualized TPV",
+            "P1",
+            "https://www.circle.com/pressroom/circle-reports-first-quarter-2026-results",
+        )],
+        CollectorJob::ArcPublicStatus => vec![
+            (
+                "P1_ARC_PUBLIC_NETWORK_STATUS",
+                "Arc public network status",
+                "P1",
+                "https://www.arc.io/",
+            ),
+            (
+                "P1_ARC_MAINNET_STATUS",
+                "Arc mainnet status",
+                "P1",
+                "https://www.circle.com/pressroom/circle-reports-fourth-quarter-and-full-fiscal-year-2025-financial-results",
+            ),
+        ],
+        CollectorJob::MarketBeatInstitutionalOwnership => vec![(
+            "P2_CRCL_INSTITUTIONAL_OWNERSHIP",
+            "CRCL institutional ownership",
+            "P2",
+            "https://www.marketbeat.com/stocks/NYSE/CRCL/institutional-ownership/",
         )],
         CollectorJob::Treasury => vec![
             (
@@ -634,16 +675,11 @@ async fn collect_finra_short_interest(ctx: &CollectorContext<'_>) -> Result<()> 
     Ok(())
 }
 
-async fn collect_glassnode_exchange_balance(ctx: &CollectorContext<'_>) -> Result<()> {
-    let url = "https://studio.glassnode.com/charts/distribution.BalanceExchanges?a=USDC";
-    let source = "Glassnode Studio USDC exchange balance";
-    let fetched = match fetch_text(ctx, source, url).await {
-        Ok(fetched) => fetched,
-        Err(reqwest_error) => fetch_text_with_curl(ctx, source, url).with_context(|| {
-            format!("reqwest fetch failed before curl fallback: {reqwest_error:#}")
-        })?,
-    };
-    let observations = parse_glassnode_exchange_balance(&fetched.text, url)?;
+async fn collect_coinglass_exchange_balance(ctx: &CollectorContext<'_>) -> Result<()> {
+    let url = "https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC";
+    let source = "CoinGlass Exchange Balance List: USDC";
+    let fetched = fetch_coinglass_text(ctx, source, url).await?;
+    let observations = parse_coinglass_exchange_balance(&fetched.text, url)?;
     let has_exchange_balance = observations
         .iter()
         .any(|obs| obs.metric_code == "P1_EXCHANGE_USDC_BALANCES");
@@ -651,6 +687,78 @@ async fn collect_glassnode_exchange_balance(ctx: &CollectorContext<'_>) -> Resul
     if has_exchange_balance {
         ctx.db.delete_missing_metric("P1_EXCHANGE_USDC_BALANCES")?;
     }
+    Ok(())
+}
+
+async fn collect_circle_platform_metrics(ctx: &CollectorContext<'_>) -> Result<()> {
+    let url = "https://www.circle.com/pressroom/circle-reports-first-quarter-2026-results";
+    let fetched = fetch_text(ctx, "Circle Q1 2026 platform metrics", url).await?;
+    let observations = parse_circle_platform_metrics(&fetched.text, url)?;
+    let has_cpn_tpv = observations
+        .iter()
+        .any(|obs| obs.metric_code == "P1_CPN_ANNUALIZED_TPV");
+    insert_observations(ctx.db, fetched.run_id, &observations)?;
+    if has_cpn_tpv {
+        ctx.db.delete_missing_metric("P1_CPN_ANNUALIZED_TPV")?;
+    }
+    Ok(())
+}
+
+async fn collect_arc_public_status(ctx: &CollectorContext<'_>) -> Result<()> {
+    let primary_url = "https://www.arc.io/";
+    let (run_id, observations) = match fetch_text(ctx, "Arc public website", primary_url).await {
+        Ok(fetched) => (
+            fetched.run_id,
+            parse_arc_public_status(&fetched.text, primary_url)?,
+        ),
+        Err(primary_error) => {
+            let primary_error_text = primary_error.to_string();
+            let fallback_url = "https://www.circle.com/pressroom/circle-reports-fourth-quarter-and-full-fiscal-year-2025-financial-results";
+            let fetched = fetch_text(ctx, "Circle Q4 FY2025 Arc metrics", fallback_url)
+                .await
+                .with_context(|| {
+                    format!(
+                        "Arc public website failed ({primary_error_text}); Circle press release fallback also failed"
+                    )
+                })?;
+            let observations = parse_circle_platform_metrics(&fetched.text, fallback_url)
+                .with_context(|| {
+                    format!(
+                        "Arc public website failed ({primary_error_text}); Circle press release fallback had no parsable Arc metrics"
+                    )
+                })?
+                .into_iter()
+                .filter(|obs| obs.metric_code.starts_with("P1_ARC_"))
+                .collect::<Vec<_>>();
+            if observations.is_empty() {
+                return Err(anyhow!(
+                    "Arc public website failed ({primary_error_text}); Circle press release fallback had no Arc metrics"
+                ));
+            }
+            (fetched.run_id, observations)
+        }
+    };
+    let has_arc_status = observations
+        .iter()
+        .any(|obs| obs.metric_code.starts_with("P1_ARC_"));
+    insert_observations(ctx.db, run_id, &observations)?;
+    if has_arc_status {
+        ctx.db
+            .delete_missing_metric("P1_ARC_PUBLIC_NETWORK_STATUS")?;
+        ctx.db.delete_missing_metric("P1_ARC_MAINNET_STATUS")?;
+    }
+    Ok(())
+}
+
+async fn collect_marketbeat_institutional_ownership(ctx: &CollectorContext<'_>) -> Result<()> {
+    let url = "https://www.marketbeat.com/stocks/NYSE/CRCL/institutional-ownership/";
+    let fetched = fetch_text(ctx, "MarketBeat CRCL institutional ownership", url).await?;
+    let observations = parse_marketbeat_institutional_ownership(&fetched.text, url)?;
+    if !observations.is_empty() {
+        ctx.db
+            .delete_missing_metric("P2_CRCL_INSTITUTIONAL_OWNERSHIP")?;
+    }
+    insert_observations(ctx.db, fetched.run_id, &observations)?;
     Ok(())
 }
 
@@ -1034,81 +1142,25 @@ async fn fetch_text(ctx: &CollectorContext<'_>, source: &str, url: &str) -> Resu
     }
 }
 
-fn fetch_text_with_curl(
+async fn fetch_coinglass_text(
     ctx: &CollectorContext<'_>,
     source: &str,
     url: &str,
 ) -> Result<FetchedText> {
-    let status_marker = "\nCRCL_CURL_HTTP_STATUS:";
-    // Glassnode currently serves the public page to curl while rejecting reqwest's TLS fingerprint.
-    let output = Command::new("curl")
-        .args([
-            "--http1.1",
-            "-L",
-            "-sS",
-            "--compressed",
-            "--max-time",
-            "60",
-            "-A",
-            &ctx.user_agent,
-            "-H",
-            "Accept: */*",
-            "-H",
-            "Accept-Language: en-US,en;q=0.9",
-            "-w",
-            status_marker,
-            "-w",
-            "%{http_code}",
-            url,
-        ])
-        .output();
+    let mut request = ctx.client.get(url).header(ACCEPT, "application/json");
+    if let Ok(api_key) = env::var("COINGLASS_API_KEY")
+        && !api_key.trim().is_empty()
+    {
+        request = request.header("CG-API-KEY", api_key);
+    }
+    let response = request.send().await;
 
-    match output {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            let (text, http_status) =
-                split_curl_body_and_status(&stdout, status_marker).unwrap_or((stdout, None));
-            let is_success = output.status.success()
-                && http_status.is_some_and(|status| (200..300).contains(&status));
-            let status = if is_success {
-                "ok"
-            } else if http_status.is_some() {
-                "http_error"
-            } else {
-                "network_error"
-            };
-            let run = source_run(
-                ctx,
-                format!("{source} (curl fallback)"),
-                url.to_string(),
-                status,
-                http_status,
-                if is_success {
-                    None
-                } else {
-                    Some(curl_error_message(
-                        http_status,
-                        output.status.code(),
-                        &stderr,
-                    ))
-                },
-                Some(excerpt(&text)),
-            );
-            let run_id = ctx.db.insert_source_run(&run)?;
-            if !is_success {
-                return Err(anyhow!(
-                    "{} curl fallback failed: {}",
-                    source,
-                    curl_error_message(http_status, output.status.code(), &stderr)
-                ));
-            }
-            Ok(FetchedText { run_id, text })
-        }
+    match response {
+        Ok(response) => response_to_fetched_text(ctx, source, url, response).await,
         Err(error) => {
             let run = source_run(
                 ctx,
-                format!("{source} (curl fallback)"),
+                source.to_string(),
                 url.to_string(),
                 "network_error",
                 None,
@@ -1118,23 +1170,6 @@ fn fetch_text_with_curl(
             ctx.db.insert_source_run(&run)?;
             Err(error.into())
         }
-    }
-}
-
-fn split_curl_body_and_status(text: &str, marker: &str) -> Option<(String, Option<u16>)> {
-    let marker_start = text.rfind(marker)?;
-    let body = text[..marker_start].to_string();
-    let status_text = text[marker_start + marker.len()..].trim();
-    let status = status_text.parse::<u16>().ok().filter(|status| *status > 0);
-    Some((body, status))
-}
-
-fn curl_error_message(http_status: Option<u16>, exit_code: Option<i32>, stderr: &str) -> String {
-    match (http_status, stderr.is_empty()) {
-        (Some(status), true) => format!("HTTP {status}; curl exit={exit_code:?}"),
-        (Some(status), false) => format!("HTTP {status}; curl exit={exit_code:?}; {stderr}"),
-        (None, true) => format!("curl exit={exit_code:?}"),
-        (None, false) => format!("curl exit={exit_code:?}; {stderr}"),
     }
 }
 
@@ -1307,12 +1342,12 @@ fn record_known_gaps(db: &Database, selector: SourceSelector) -> Result<()> {
             &[SourceSelector::Sec][..],
         ),
         (
-            "Glassnode/Nansen/TokenTerminal",
+            "CoinGlass",
             "P1_EXCHANGE_USDC_BALANCES",
             "Exchange USDC balances",
             "P1",
-            "Glassnode Studio public page latest value extraction is attempted with a curl fallback; remains missing if the public page blocks the local client or its rendered metadata schema changes.",
-            "https://studio.glassnode.com/charts/distribution.BalanceExchanges?a=USDC; Glassnode API, Nansen, or TokenTerminal for paid cross-checks",
+            "CoinGlass Exchange Balance List is the configured replacement for Glassnode Studio; set COINGLASS_API_KEY because the API returns business code 401 without the CG-API-KEY header.",
+            "https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC",
             &[SourceSelector::Market][..],
         ),
         (

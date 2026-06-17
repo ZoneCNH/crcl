@@ -1,7 +1,10 @@
+mod agent_runner;
 mod collectors;
+mod cron_runner;
 mod db;
 mod models;
 mod parsing;
+mod workflows;
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -11,6 +14,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use collectors::{CollectorContext, run_collectors, source_selector_label};
 use db::{Database, RecentEvent, RecentFiling, RecentObservation, RecentSourceRun, Summary};
 use serde::Serialize;
+use workflows::{WorkflowCollectorRun, WorkflowKind, WorkflowPacketRequest};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
@@ -52,6 +56,51 @@ enum Command {
         #[arg(long)]
         no_collect: bool,
     },
+    DecisionPack {
+        #[arg(long, value_enum, default_value_t = WorkflowKind::DailyMonitor)]
+        workflow: WorkflowKind,
+
+        #[arg(long, default_value_t = 32)]
+        limit: usize,
+
+        #[arg(long, default_value_t = 6)]
+        history_limit: usize,
+
+        #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
+        format: OutputFormat,
+
+        #[arg(long)]
+        no_collect: bool,
+    },
+    AgentRun {
+        #[arg(long, value_enum, default_value_t = WorkflowKind::DailyMonitor)]
+        workflow: WorkflowKind,
+
+        #[arg(long, default_value_t = 64)]
+        limit: usize,
+
+        #[arg(long, default_value_t = 6)]
+        history_limit: usize,
+
+        #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
+        format: OutputFormat,
+
+        #[arg(long)]
+        no_collect: bool,
+
+        #[arg(long)]
+        save: bool,
+
+        #[arg(long, default_value = "work_docs/agent_runs")]
+        out_dir: PathBuf,
+
+        #[arg(long)]
+        current_position_pct: Option<f64>,
+    },
+    Cron {
+        #[command(subcommand)]
+        command: cron_runner::CronCommand,
+    },
     Summary,
     Missing,
 }
@@ -68,7 +117,10 @@ pub enum SourceSelector {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 pub enum AgentProfile {
+    Collector,
+    DataQuality,
     Source,
+    Monitor,
     Financial,
     Regulatory,
     Competition,
@@ -111,6 +163,18 @@ struct AgentContextRequest<'a> {
     user_agent: String,
     profile: AgentProfile,
     limit: usize,
+    format: OutputFormat,
+    no_collect: bool,
+}
+
+struct DecisionPackRequest<'a> {
+    db: &'a Database,
+    database: &'a Path,
+    timeout_secs: u64,
+    user_agent: String,
+    workflow: WorkflowKind,
+    limit: usize,
+    history_limit: usize,
     format: OutputFormat,
     no_collect: bool,
 }
@@ -174,6 +238,57 @@ async fn main() -> Result<()> {
             })
             .await?;
         }
+        Command::DecisionPack {
+            workflow,
+            limit,
+            history_limit,
+            format,
+            no_collect,
+        } => {
+            run_decision_pack(DecisionPackRequest {
+                db: &db,
+                database: &cli.database,
+                timeout_secs: cli.timeout_secs,
+                user_agent: cli.user_agent,
+                workflow,
+                limit,
+                history_limit,
+                format,
+                no_collect,
+            })
+            .await?;
+        }
+        Command::AgentRun {
+            workflow,
+            limit,
+            history_limit,
+            format,
+            no_collect,
+            save,
+            out_dir,
+            current_position_pct,
+        } => {
+            run_agent_run(
+                DecisionPackRequest {
+                    db: &db,
+                    database: &cli.database,
+                    timeout_secs: cli.timeout_secs,
+                    user_agent: cli.user_agent,
+                    workflow,
+                    limit,
+                    history_limit,
+                    format,
+                    no_collect,
+                },
+                save,
+                out_dir,
+                current_position_pct,
+            )
+            .await?;
+        }
+        Command::Cron { command } => {
+            cron_runner::handle(command)?;
+        }
         Command::Summary => {
             let summary = db.summary()?;
             println!("collection_batches={}", summary.collection_batches);
@@ -194,6 +309,96 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+async fn run_decision_pack(request: DecisionPackRequest<'_>) -> Result<()> {
+    let format = request.format;
+    let packet_request = workflow_packet_request(request).await?;
+
+    workflows::print_workflow_packet(packet_request, format)
+}
+
+async fn run_agent_run(
+    request: DecisionPackRequest<'_>,
+    save: bool,
+    out_dir: PathBuf,
+    current_position_pct: Option<f64>,
+) -> Result<()> {
+    let format = request.format;
+    let packet_request = workflow_packet_request(request).await?;
+    let packet = workflows::build_workflow_packet(packet_request)?;
+    agent_runner::run_agent_packet(
+        packet,
+        agent_runner::AgentRunOptions {
+            format,
+            save,
+            out_dir,
+            current_position_pct,
+        },
+    )
+}
+
+async fn workflow_packet_request<'a>(
+    request: DecisionPackRequest<'a>,
+) -> Result<WorkflowPacketRequest<'a>> {
+    let collector_run = collect_for_workflow(&request).await?;
+    Ok(WorkflowPacketRequest {
+        db: request.db,
+        database: request.database,
+        workflow: request.workflow,
+        limit: request.limit,
+        history_limit: request.history_limit,
+        collector_run,
+    })
+}
+
+async fn collect_for_workflow(
+    request: &DecisionPackRequest<'_>,
+) -> Result<Option<WorkflowCollectorRun>> {
+    if request.no_collect {
+        return Ok(None);
+    }
+
+    let batch_id = new_batch_id("decision-pack");
+    let selector_summary = workflows::selectors_for_workflow(request.workflow)
+        .iter()
+        .map(|selector| source_selector_label(*selector))
+        .collect::<Vec<_>>()
+        .join(",");
+    request
+        .db
+        .start_collection_batch(&batch_id, "decision-pack", None, Some(&selector_summary))?;
+
+    let client = reqwest::Client::builder()
+        .use_native_tls()
+        .timeout(Duration::from_secs(request.timeout_secs))
+        .user_agent(request.user_agent.clone())
+        .build()?;
+    let ctx = CollectorContext {
+        db: request.db,
+        client,
+        user_agent: request.user_agent.clone(),
+        batch_id: Some(batch_id.clone()),
+        profile: None,
+        selector: None,
+    };
+
+    let mut ok_sources = 0;
+    let mut warn_sources = 0;
+    for selector in workflows::selectors_for_workflow(request.workflow) {
+        let report = run_collectors(&ctx, *selector).await?;
+        ok_sources += report.ok_sources;
+        warn_sources += report.warn_sources;
+    }
+    request
+        .db
+        .finish_collection_batch(&batch_id, ok_sources, warn_sources)?;
+
+    Ok(Some(WorkflowCollectorRun {
+        batch_id,
+        ok_sources,
+        warn_sources,
+    }))
 }
 
 async fn run_agent_context(request: AgentContextRequest<'_>) -> Result<()> {
@@ -263,7 +468,12 @@ async fn run_agent_context(request: AgentContextRequest<'_>) -> Result<()> {
 
 fn selectors_for_profile(profile: AgentProfile) -> Vec<SourceSelector> {
     match profile {
-        AgentProfile::Source | AgentProfile::Risk | AgentProfile::Autoresearch => {
+        AgentProfile::Collector
+        | AgentProfile::DataQuality
+        | AgentProfile::Source
+        | AgentProfile::Monitor
+        | AgentProfile::Risk
+        | AgentProfile::Autoresearch => {
             vec![SourceSelector::All]
         }
         AgentProfile::Financial => vec![
@@ -460,7 +670,12 @@ fn new_batch_id(command: &str) -> String {
 fn source_run_matches_profile(profile: AgentProfile, run: &RecentSourceRun) -> bool {
     if matches!(
         profile,
-        AgentProfile::Source | AgentProfile::Risk | AgentProfile::Autoresearch
+        AgentProfile::Collector
+            | AgentProfile::DataQuality
+            | AgentProfile::Source
+            | AgentProfile::Monitor
+            | AgentProfile::Risk
+            | AgentProfile::Autoresearch
     ) {
         return true;
     }
@@ -536,14 +751,24 @@ fn source_run_matches_profile(profile: AgentProfile, run: &RecentSourceRun) -> b
         ]
         .iter()
         .any(|needle| source.contains(needle)),
-        AgentProfile::Source | AgentProfile::Risk | AgentProfile::Autoresearch => true,
+        AgentProfile::Collector
+        | AgentProfile::DataQuality
+        | AgentProfile::Source
+        | AgentProfile::Monitor
+        | AgentProfile::Risk
+        | AgentProfile::Autoresearch => true,
     }
 }
 
 fn observation_matches_profile(profile: AgentProfile, obs: &RecentObservation) -> bool {
     if matches!(
         profile,
-        AgentProfile::Source | AgentProfile::Risk | AgentProfile::Autoresearch
+        AgentProfile::Collector
+            | AgentProfile::DataQuality
+            | AgentProfile::Source
+            | AgentProfile::Monitor
+            | AgentProfile::Risk
+            | AgentProfile::Autoresearch
     ) {
         return true;
     }
@@ -562,6 +787,7 @@ fn observation_matches_profile(profile: AgentProfile, obs: &RecentObservation) -
                 | "stablecoin_supply"
                 | "chain_activity"
                 | "channel_dependence"
+                | "platform_metrics"
                 | "peg_check"
         ),
         AgentProfile::Regulatory => category == "technical_status" || metric.starts_with("SOURCE_"),
@@ -574,6 +800,7 @@ fn observation_matches_profile(profile: AgentProfile, obs: &RecentObservation) -
                 | "defi_adoption"
                 | "rwa_treasuries"
                 | "exchange_balance"
+                | "institutional_ownership"
                 | "peg_check"
                 | "peg_liquidity"
                 | "equity_market"
@@ -589,15 +816,26 @@ fn observation_matches_profile(profile: AgentProfile, obs: &RecentObservation) -
                 | "rwa_treasuries"
                 | "sec_filing"
                 | "channel_dependence"
+                | "platform_metrics"
         ),
-        AgentProfile::Source | AgentProfile::Risk | AgentProfile::Autoresearch => true,
+        AgentProfile::Collector
+        | AgentProfile::DataQuality
+        | AgentProfile::Source
+        | AgentProfile::Monitor
+        | AgentProfile::Risk
+        | AgentProfile::Autoresearch => true,
     }
 }
 
 fn event_matches_profile(profile: AgentProfile, event: &RecentEvent) -> bool {
     if matches!(
         profile,
-        AgentProfile::Source | AgentProfile::Risk | AgentProfile::Autoresearch
+        AgentProfile::Collector
+            | AgentProfile::DataQuality
+            | AgentProfile::Source
+            | AgentProfile::Monitor
+            | AgentProfile::Risk
+            | AgentProfile::Autoresearch
     ) {
         return true;
     }
@@ -629,14 +867,23 @@ fn event_matches_profile(profile: AgentProfile, event: &RecentEvent) -> bool {
         AgentProfile::Competition | AgentProfile::Platform => {
             source.contains("circle pressroom") || source.contains("circle investor")
         }
-        AgentProfile::Source | AgentProfile::Risk | AgentProfile::Autoresearch => true,
+        AgentProfile::Collector
+        | AgentProfile::DataQuality
+        | AgentProfile::Source
+        | AgentProfile::Monitor
+        | AgentProfile::Risk
+        | AgentProfile::Autoresearch => true,
     }
 }
 
 fn missing_item_matches_profile(profile: AgentProfile, item: &models::MissingItem) -> bool {
     if matches!(
         profile,
-        AgentProfile::Source | AgentProfile::Risk | AgentProfile::Autoresearch
+        AgentProfile::Collector
+            | AgentProfile::DataQuality
+            | AgentProfile::Source
+            | AgentProfile::Risk
+            | AgentProfile::Autoresearch
     ) {
         return true;
     }
@@ -653,6 +900,8 @@ fn missing_item_matches_profile(profile: AgentProfile, item: &models::MissingIte
                 || code.starts_with("P1_COINBASE")
                 || code == "P1_USDC_VELOCITY"
                 || code == "P1_USDC_ADJUSTED_TRANSFER_VOLUME"
+                || code.starts_with("P1_CPN")
+                || code.starts_with("P1_ARC")
         }
         AgentProfile::Regulatory => {
             code.starts_with("SOURCE_")
@@ -670,6 +919,7 @@ fn missing_item_matches_profile(profile: AgentProfile, item: &models::MissingIte
                 || code.starts_with("P1_TOKENIZED")
                 || code.starts_with("P1_EXCHANGE")
                 || code.starts_with("P2_FINRA")
+                || code.starts_with("P2_CRCL_INSTITUTIONAL")
                 || code.starts_with("P0_CURVE")
                 || code == "P0_CIRCLE_MINTED_REDEEMED"
         }
@@ -679,15 +929,27 @@ fn missing_item_matches_profile(profile: AgentProfile, item: &models::MissingIte
                 || code == "P1_USDC_ADJUSTED_TRANSFER_VOLUME"
                 || code.starts_with("P1_DEFI")
                 || code.starts_with("P1_TOKENIZED")
+                || code.starts_with("P1_CPN")
+                || code.starts_with("P1_ARC")
                 || collector.contains("circle")
         }
-        AgentProfile::Source | AgentProfile::Risk | AgentProfile::Autoresearch => true,
+        AgentProfile::Collector
+        | AgentProfile::DataQuality
+        | AgentProfile::Source
+        | AgentProfile::Monitor
+        | AgentProfile::Risk
+        | AgentProfile::Autoresearch => true,
     }
 }
 
 fn selector_labels_for_profile(profile: AgentProfile) -> &'static [&'static str] {
     match profile {
-        AgentProfile::Source | AgentProfile::Risk | AgentProfile::Autoresearch => &["all"],
+        AgentProfile::Collector
+        | AgentProfile::DataQuality
+        | AgentProfile::Source
+        | AgentProfile::Monitor
+        | AgentProfile::Risk
+        | AgentProfile::Autoresearch => &["all"],
         AgentProfile::Financial => &["sec", "rates", "market"],
         AgentProfile::Regulatory => &["events", "status"],
         AgentProfile::Competition => &["market", "events"],
@@ -697,7 +959,10 @@ fn selector_labels_for_profile(profile: AgentProfile) -> &'static [&'static str]
 
 fn profile_label(profile: AgentProfile) -> &'static str {
     match profile {
+        AgentProfile::Collector => "collector",
+        AgentProfile::DataQuality => "data-quality",
         AgentProfile::Source => "source",
+        AgentProfile::Monitor => "monitor",
         AgentProfile::Financial => "financial",
         AgentProfile::Regulatory => "regulatory",
         AgentProfile::Competition => "competition",
