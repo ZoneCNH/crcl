@@ -115,7 +115,7 @@ export CRCL_DATA_USER_AGENT="crcl-data-collector/0.1 your-email@example.com"
 | P1/P2 | Circle 10-Q/10-K reserve income、distribution costs、RLDC、Adjusted EBITDA、USDC 期末/平均流通量、onchain volume、filing-period velocity；Coinbase stablecoin revenue、receivables、client custodial funds、customer USDC on platform | SEC EDGAR inline XBRL + filing 正文表格 | `observations` |
 | P1 | USDC active addresses、transaction count、transfer count | CoinMetrics Community API | `observations` |
 | P1 | USDC adjusted transfer volume（最近完整 UTC 日，附 30D 合计属性） | Visa Onchain Analytics / Allium JSON API | `observations` |
-| P1 | Exchange USDC balances（collector 已接入，需 key 才会落库） | CoinGlass Exchange Balance List v4 API；需 `COINGLASS_API_KEY` | `observations` / `missing_items` |
+| P1 | Exchange USDC balances、24h/7d/30d 变化、集中度、历史余额 | CoinGlass Open API（有 `COINGLASS_API_KEY` 时优先）或 CoinGlass 前台公开 `capi.coinglass.com` balance endpoint fallback；历史用前台 `balance?symbol=USDC&exName=all&size=300&resolution=7` | `observations` + `exchange_usdc_balances` + `exchange_usdc_balance_history` / `missing_items` |
 | P1 | CPN annualized TPV | Circle Q1 2026 pressroom / earnings disclosure | `observations` |
 | P1 | Arc public network / mainnet status、testnet usage | Arc 官网；Circle Q4/FY2025 pressroom 兜底 | `observations` |
 | P1 | Tokenized U.S. Treasury debt AUM、BlackRock BUIDL AUM | RWA.xyz public treasuries page `__NEXT_DATA__` | `observations` |
@@ -136,7 +136,7 @@ export CRCL_DATA_USER_AGENT="crcl-data-collector/0.1 your-email@example.com"
 | --- | --- | --- | --- |
 | P1 | Dune 仪表盘截图、周度 adjusted velocity 交叉验证 | 日度 adjusted transfer volume 已用 Visa / Allium 自动落库；Dune 仍适合周报截图和口径核对 | 增加 `DUNE_API_KEY` 配置和固定 query id |
 | P1 | CoinMetrics adjusted transfer value 交叉验证 | Community API 对 `TxTfrValAdjUSD` 返回凭证限制；主自动源改用 Visa / Allium | 如需严谨双源，接入 CoinMetrics Pro |
-| P1 | Exchange USDC balances 凭证 | 已改用 CoinGlass Exchange Balance List；无 key 时接口返回 `API key missing` | 配置 `COINGLASS_API_KEY`；Nansen / TokenTerminal / Glassnode API 可作为付费确认源 |
+| P1 | Exchange USDC balances 交叉验证 | 已接入 CoinGlass 前台公开接口 fallback，并派生 24h/7d/30d、90D/365D 和 top3 concentration；Open API key 仍可作为优先路径 | 保留 `COINGLASS_API_KEY` 配置位；Nansen / TokenTerminal / Glassnode API 可作为付费确认源 |
 
 ## 数据库表
 
@@ -145,6 +145,8 @@ export CRCL_DATA_USER_AGENT="crcl-data-collector/0.1 your-email@example.com"
 | `collection_batches` | 每轮 `collect` / `agent-context` 的 batch id、profile、selector、开始结束时间和成功/警告数量 |
 | `source_runs` | 每次访问 URL 的状态、HTTP code、错误和原始摘录 |
 | `observations` | 标准化指标事实，带 `metric_code`、P0/P1/P2、数值、单位、来源 |
+| `exchange_usdc_balances` | CoinGlass 交易所级 USDC balance 明细、24h/7d/30d 变化 |
+| `exchange_usdc_balance_history` | CoinGlass 交易所级 USDC balance 历史点位、USDC/USD priceList 对照 |
 | `filings` | SEC filing 元数据 |
 | `events` | 公司公告、监管页面检查等事件入口 |
 | `missing_items` | 暂时无法自动获取的数据和原因 |
@@ -169,6 +171,6 @@ cargo test --release
 - Treasury XML 最新收益率行解析
 - NY Fed SOFR JSON 解析
 - Visa Onchain Analytics / Allium USDC adjusted transfer volume 解析
-- CoinGlass USDC exchange balance list 解析和无 key 错误提示
+- CoinGlass USDC exchange balance list/history 解析、变化/集中度派生和无 key 错误提示
 - Circle pressroom CPN TPV、Arc mainnet / testnet metrics 解析
 - MarketBeat CRCL institutional ownership 聚合页解析

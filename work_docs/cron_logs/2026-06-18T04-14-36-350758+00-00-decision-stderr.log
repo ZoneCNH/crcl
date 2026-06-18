@@ -1,0 +1,4 @@
+Reading additional input from stdin...
+2026-06-18T04:15:32.689068Z ERROR codex_core::tools::router: error=Full-history forked agents inherit the parent agent type, model, and reasoning effort; omit agent_type, model, and reasoning_effort, or spawn without a full-history fork.
+2026-06-18T05:07:01.720654Z ERROR codex_core::tools::router: error=exec_command failed for `/bin/zsh -lc "sed -n '1,260p' docs/risk/01-warning-signals.md"`: CreateProcess { message: "Rejected(\"Failed to create unified exec process: Too many open files (os error 24)\")" }
+2026-06-18T05:07:01.721160Z ERROR codex_core::tools::router: error=exec_command failed for `/bin/zsh -lc "sed -n '1,260p' docs/framework/00-research-map.md"`: CreateProcess { message: "Rejected(\"Failed to create unified exec process: Too many open files (os error 24)\")" }

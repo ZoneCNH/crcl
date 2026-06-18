@@ -28,6 +28,7 @@ Codex 会按 `name` 字段识别 agent。推荐让用户直接输入任务，由
 | `crcl-platform-option` | CPN、Arc、Other revenue 和平台化验证 | 弱/中/强验证、missing_info、估值切换条件 |
 | `crcl-risk-decision` | 多矩阵冲突、风险优先级、最终动作收口 | 增强/降级/观察、风险、下次触发 |
 | `crcl-autoresearch-curator` | 新假设、阈值、模板或来源的迭代治理 | keep/revise/defer/reject 与写入建议 |
+| `crcl-total-analysis` | 完整跑批后的跨 workflow 总分析 | 观察/Base/Bear、data-quality、核心指标、missing_info、下一步和保存路径 |
 
 ## 使用原则
 
@@ -37,6 +38,7 @@ Codex 会按 `name` 字段识别 agent。推荐让用户直接输入任务，由
 - 多个 agent 不应同时改同一个文件；需要写入时由主线程统一落盘。
 - 所有结论都必须回到项目文档的三类动作：增强、降级、观察。
 - 财务和监管事实优先用 SEC filing、Circle 官方披露和美国监管机构文件；二级数据平台只能作为监控线索。
+- 完整跑批后使用 `crcl-total-analysis` 或本地 `full-analysis` 入口，把分类目录中的最新 final 收口为 `work_docs/agent_runs/` 下的总报告。
 
 ## Rust 采集器调用
 
@@ -72,11 +74,13 @@ JSON 输出包含本轮 `collector_run.batch_id`、按角色过滤后的 `recent
 | `crcl-platform-option` | `platform` | `events`、`sec`、`market` |
 | `crcl-risk-decision` | `risk` | `all` |
 | `crcl-autoresearch-curator` | `autoresearch` | `all` |
+| `crcl-total-analysis` | `full-analysis` 命令 | 已保存 workflow final + 本地 SQLite |
 
 保留的底层命令也必须带 `--release`：
 
 ```bash
 cargo run --release -- collect --source all
+cargo run --release -- full-analysis --save
 cargo run --release -- summary
 cargo run --release -- missing
 cargo test --release

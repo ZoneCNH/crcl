@@ -17,6 +17,7 @@
    - 财报 / 季报复核：`quarterly-earnings`
    - 估值 / 仓位 / 交易决策：`valuation-decision`
    - 框架自检 / autoresearch / keep-revise-defer-reject：`framework-review`
+   - 完整跑批后总分析 / 跨 workflow 收口：`full-analysis`
 2. 判断是否刷新数据：
    - 用户说“当前”“最新”“今天”“本周”“运行一次”“允许刷新”时，默认允许刷新外部数据。
    - 用户说“只读”“不联网”“用已有数据库”“不刷新”时，必须加 `--no-collect`。
@@ -34,6 +35,7 @@
 - 财报复核：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-financial-valuation`、`crcl-platform-option`、`crcl-competition-score`、`crcl-risk-decision`
 - 估值/仓位：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-financial-valuation`、`crcl-competition-score`、`crcl-regulatory-watch`、`crcl-platform-option`、`crcl-risk-decision`
 - 框架自检：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-financial-valuation`、`crcl-regulatory-watch`、`crcl-competition-score`、`crcl-platform-option`、`crcl-autoresearch-curator`、`crcl-risk-decision`
+- 完整跑批后总分析：`crcl-total-analysis`；它读取最新 monitoring、daily-monitor、weekly-review、valuation-decision、quarterly-earnings、framework-review 产物和本地 SQLite，不重新刷新外部数据，统一收口成总报告
 
 ## 命令判断
 
@@ -48,6 +50,7 @@ cargo run --release -- agent-run --workflow weekly-review
 cargo run --release -- agent-run --workflow quarterly-earnings
 cargo run --release -- agent-run --workflow valuation-decision --current-position-pct 50
 cargo run --release -- agent-run --workflow framework-review
+cargo run --release -- full-analysis --save
 ```
 
 只读已有数据库时，在命令后追加：
@@ -64,6 +67,14 @@ cargo run --release -- agent-run --workflow framework-review
 
 `--save` 默认输出到 `work_docs/agent_runs/`。如果需要别的目录，追加 `--out-dir <path>`。
 
+完整跑批后总分析入口：
+
+```bash
+cargo run --release -- full-analysis --save
+```
+
+该入口默认读取 `work_docs/<workflow>/` 最新 final 和本地 SQLite，不重新刷新外部数据，保存到 `work_docs/agent_runs/`。
+
 cron / `codex exec` 定时任务默认按类别保存到：
 
 ```bash
@@ -73,6 +84,7 @@ work_docs/weekly-review/
 work_docs/quarterly-earnings/
 work_docs/valuation-decision/
 work_docs/framework-review/
+work_docs/agent_runs/
 ```
 
 如果用户明确要求真实 Codex subagents 逐个复核，先派 `crcl-data-collector` 生成同一批证据包，再让后续 subagents 读取对应 `agent-context --profile ... --no-collect` 上下文，避免多次刷新造成口径不一致。

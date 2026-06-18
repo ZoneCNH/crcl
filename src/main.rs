@@ -2,6 +2,7 @@ mod agent_runner;
 mod collectors;
 mod cron_runner;
 mod db;
+mod full_analysis;
 mod models;
 mod parsing;
 mod workflows;
@@ -96,6 +97,19 @@ enum Command {
 
         #[arg(long)]
         current_position_pct: Option<f64>,
+    },
+    FullAnalysis {
+        #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
+        format: OutputFormat,
+
+        #[arg(long)]
+        save: bool,
+
+        #[arg(long, default_value = "work_docs/agent_runs")]
+        out_dir: PathBuf,
+
+        #[arg(long, default_value = "work_docs")]
+        work_docs_dir: PathBuf,
     },
     Cron {
         #[command(subcommand)]
@@ -285,6 +299,23 @@ async fn main() -> Result<()> {
                 current_position_pct,
             )
             .await?;
+        }
+        Command::FullAnalysis {
+            format,
+            save,
+            out_dir,
+            work_docs_dir,
+        } => {
+            full_analysis::run(
+                &db,
+                &cli.database,
+                full_analysis::FullAnalysisOptions {
+                    format,
+                    save,
+                    out_dir,
+                    work_docs_dir,
+                },
+            )?;
         }
         Command::Cron { command } => {
             cron_runner::handle(command)?;
@@ -702,7 +733,7 @@ fn source_run_matches_profile(profile: AgentProfile, run: &RecentSourceRun) -> b
             "rwa",
             "yahoo",
             "finra",
-            "glassnode",
+            "coinglass",
         ]
         .iter()
         .any(|needle| source.contains(needle)),
@@ -733,7 +764,7 @@ fn source_run_matches_profile(profile: AgentProfile, run: &RecentSourceRun) -> b
             "rwa",
             "yahoo",
             "finra",
-            "glassnode",
+            "coinglass",
             "circle pressroom",
         ]
         .iter()

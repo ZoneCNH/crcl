@@ -4,18 +4,33 @@ use crate::models::{Event, Filing, MissingItem, Observation, SourceRun};
 use crate::parsing::{
     page_title, parse_arc_public_status, parse_circle_platform_metrics, parse_circle_pressroom,
     parse_circle_sec_filing, parse_circle_transparency, parse_coinbase_sec_filing,
-    parse_coingecko_simple_price, parse_coinglass_exchange_balance,
-    parse_coinmetrics_usdc_activity, parse_curve_3pool, parse_defillama_protocol_usdc_deposits,
-    parse_defillama_stablecoins, parse_ethereum_latest_block, parse_finra_short_interest,
+    parse_coingecko_simple_price, parse_coinglass_exchange_balance_history_snapshot,
+    parse_coinglass_exchange_balance_snapshot, parse_coinmetrics_usdc_activity, parse_curve_3pool,
+    parse_defillama_protocol_usdc_deposits, parse_defillama_stablecoins,
+    parse_ethereum_latest_block, parse_finra_short_interest,
     parse_marketbeat_institutional_ownership, parse_nyfed_sofr, parse_rwa_treasuries,
     parse_sec_blackrock_nmfp3_filing, parse_sec_submissions, parse_statuspage,
     parse_treasury_yield_curve, parse_visa_allium_usdc_adjusted_transfer_volume, parse_yahoo_chart,
 };
+use aes::Aes128;
 use anyhow::{Context, Result, anyhow};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use chrono::{Datelike, Utc};
-use reqwest::header::{ACCEPT, ACCEPT_LANGUAGE};
+use cipher::{BlockDecryptMut, KeyInit, block_padding::Pkcs7};
+use flate2::read::{DeflateDecoder, GzDecoder, ZlibDecoder};
+use reqwest::header::{ACCEPT, ACCEPT_LANGUAGE, HeaderMap, REFERER, USER_AGENT};
 use serde_json::json;
 use std::env;
+use std::io::Read;
+
+type Aes128EcbDec = ecb::Decryptor<Aes128>;
+
+const COINGLASS_OPEN_API_BALANCE_URL: &str =
+    "https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC";
+const COINGLASS_FRONTEND_BALANCE_BASE_URL: &str =
+    "https://capi.coinglass.com/api/exchange/chain/v3/balance/list?symbol=USDC";
+const COINGLASS_FRONTEND_BALANCE_HISTORY_BASE_URL: &str = "https://capi.coinglass.com/api/exchange/chain/v3/balance?symbol=USDC&exName=all&size=300&resolution=7";
+const COINGLASS_FRONTEND_REFERER: &str = "https://www.coinglass.com/zh/Balance";
 
 pub struct CollectorContext<'a> {
     pub db: &'a Database,
@@ -329,12 +344,26 @@ fn job_failure_gaps(
             "P2",
             "https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest",
         )],
-        CollectorJob::CoinGlassExchangeBalance => vec![(
-            "P1_EXCHANGE_USDC_BALANCES",
-            "Exchange USDC balances",
-            "P1",
-            "https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC",
-        )],
+        CollectorJob::CoinGlassExchangeBalance => vec![
+            (
+                "P1_EXCHANGE_USDC_BALANCES",
+                "Exchange USDC balances",
+                "P1",
+                "https://capi.coinglass.com/api/exchange/chain/v3/balance/list?symbol=USDC",
+            ),
+            (
+                "P1_EXCHANGE_USDC_BALANCE_30D_CHANGE",
+                "Exchange USDC balance 30D change",
+                "P1",
+                "https://capi.coinglass.com/api/exchange/chain/v3/balance/list?symbol=USDC",
+            ),
+            (
+                "P1_EXCHANGE_USDC_TOP3_CONCENTRATION",
+                "Exchange USDC top 3 concentration",
+                "P1",
+                "https://capi.coinglass.com/api/exchange/chain/v3/balance/list?symbol=USDC",
+            ),
+        ],
         CollectorJob::CirclePlatformMetrics => vec![(
             "P1_CPN_ANNUALIZED_TPV",
             "Circle Payments Network annualized TPV",
@@ -676,18 +705,110 @@ async fn collect_finra_short_interest(ctx: &CollectorContext<'_>) -> Result<()> 
 }
 
 async fn collect_coinglass_exchange_balance(ctx: &CollectorContext<'_>) -> Result<()> {
-    let url = "https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC";
-    let source = "CoinGlass Exchange Balance List: USDC";
-    let fetched = fetch_coinglass_text(ctx, source, url).await?;
-    let observations = parse_coinglass_exchange_balance(&fetched.text, url)?;
-    let has_exchange_balance = observations
+    let (run_id, source_url, snapshot) = match collect_coinglass_open_api_balance(ctx).await {
+        Ok(Some(snapshot)) => snapshot,
+        Ok(None) => collect_coinglass_frontend_balance(ctx).await?,
+        Err(open_api_error) => {
+            collect_coinglass_frontend_balance(ctx)
+                .await
+                .with_context(|| {
+                    format!(
+                        "CoinGlass Open API failed before frontend fallback: {open_api_error:#}"
+                    )
+                })?
+        }
+    };
+
+    let has_exchange_balance = snapshot
+        .observations
         .iter()
         .any(|obs| obs.metric_code == "P1_EXCHANGE_USDC_BALANCES");
-    insert_observations(ctx.db, fetched.run_id, &observations)?;
+    insert_observations(ctx.db, run_id, &snapshot.observations)?;
+    for row in &snapshot.balances {
+        ctx.db.insert_exchange_usdc_balance(run_id, row)?;
+    }
     if has_exchange_balance {
         ctx.db.delete_missing_metric("P1_EXCHANGE_USDC_BALANCES")?;
     }
+    if snapshot.balances.is_empty() {
+        return Err(anyhow!(
+            "CoinGlass exchange balance snapshot parsed no exchange-level rows from {source_url}"
+        ));
+    }
+    match collect_coinglass_frontend_balance_history(ctx).await {
+        Ok((history_run_id, _, history)) => {
+            insert_observations(ctx.db, history_run_id, &history.observations)?;
+            for point in &history.points {
+                ctx.db
+                    .insert_exchange_usdc_balance_history_point(history_run_id, point)?;
+            }
+        }
+        Err(error) => {
+            eprintln!("CoinGlass frontend Exchange Balance History: {error:#}");
+        }
+    }
     Ok(())
+}
+
+async fn collect_coinglass_open_api_balance(
+    ctx: &CollectorContext<'_>,
+) -> Result<
+    Option<(
+        i64,
+        String,
+        crate::parsing::CoinGlassExchangeBalanceSnapshot,
+    )>,
+> {
+    if coinglass_api_key().is_none() {
+        return Ok(None);
+    }
+
+    let source = "CoinGlass Open API Exchange Balance List: USDC";
+    let fetched = fetch_coinglass_text(ctx, source, COINGLASS_OPEN_API_BALANCE_URL).await?;
+    let snapshot =
+        parse_coinglass_exchange_balance_snapshot(&fetched.text, COINGLASS_OPEN_API_BALANCE_URL)
+            .with_context(|| "CoinGlass Open API response could not be parsed")?;
+    Ok(Some((
+        fetched.run_id,
+        COINGLASS_OPEN_API_BALANCE_URL.to_string(),
+        snapshot,
+    )))
+}
+
+async fn collect_coinglass_frontend_balance(
+    ctx: &CollectorContext<'_>,
+) -> Result<(
+    i64,
+    String,
+    crate::parsing::CoinGlassExchangeBalanceSnapshot,
+)> {
+    let url = format!(
+        "{COINGLASS_FRONTEND_BALANCE_BASE_URL}&t={}",
+        Utc::now().timestamp_millis()
+    );
+    let source = "CoinGlass frontend Exchange Balance List: USDC";
+    let fetched = fetch_coinglass_frontend_text(ctx, source, &url).await?;
+    let snapshot = parse_coinglass_exchange_balance_snapshot(&fetched.text, &url)
+        .with_context(|| "CoinGlass frontend balance payload could not be parsed")?;
+    Ok((fetched.run_id, url, snapshot))
+}
+
+async fn collect_coinglass_frontend_balance_history(
+    ctx: &CollectorContext<'_>,
+) -> Result<(
+    i64,
+    String,
+    crate::parsing::CoinGlassExchangeBalanceHistorySnapshot,
+)> {
+    let url = format!(
+        "{COINGLASS_FRONTEND_BALANCE_HISTORY_BASE_URL}&t={}",
+        Utc::now().timestamp_millis()
+    );
+    let source = "CoinGlass frontend Exchange Balance History: USDC";
+    let fetched = fetch_coinglass_frontend_text(ctx, source, &url).await?;
+    let snapshot = parse_coinglass_exchange_balance_history_snapshot(&fetched.text, &url)
+        .with_context(|| "CoinGlass frontend balance history payload could not be parsed")?;
+    Ok((fetched.run_id, url, snapshot))
 }
 
 async fn collect_circle_platform_metrics(ctx: &CollectorContext<'_>) -> Result<()> {
@@ -1148,9 +1269,7 @@ async fn fetch_coinglass_text(
     url: &str,
 ) -> Result<FetchedText> {
     let mut request = ctx.client.get(url).header(ACCEPT, "application/json");
-    if let Ok(api_key) = env::var("COINGLASS_API_KEY")
-        && !api_key.trim().is_empty()
-    {
+    if let Some(api_key) = coinglass_api_key() {
         request = request.header("CG-API-KEY", api_key);
     }
     let response = request.send().await;
@@ -1169,6 +1288,117 @@ async fn fetch_coinglass_text(
             );
             ctx.db.insert_source_run(&run)?;
             Err(error.into())
+        }
+    }
+}
+
+async fn fetch_coinglass_frontend_text(
+    ctx: &CollectorContext<'_>,
+    source: &str,
+    url: &str,
+) -> Result<FetchedText> {
+    let response = ctx
+        .client
+        .get(url)
+        .header(ACCEPT, "application/json")
+        .header("language", "zh")
+        .header("encryption", "true")
+        .header("cache-ts-v2", "1")
+        .header(REFERER, COINGLASS_FRONTEND_REFERER)
+        .header(USER_AGENT, "Mozilla/5.0")
+        .send()
+        .await;
+
+    match response {
+        Ok(response) => {
+            response_to_coinglass_frontend_fetched_text(ctx, source, url, response).await
+        }
+        Err(error) => {
+            let run = source_run(
+                ctx,
+                source.to_string(),
+                url.to_string(),
+                "network_error",
+                None,
+                Some(error.to_string()),
+                None,
+            );
+            ctx.db.insert_source_run(&run)?;
+            Err(error.into())
+        }
+    }
+}
+
+async fn response_to_coinglass_frontend_fetched_text(
+    ctx: &CollectorContext<'_>,
+    source: &str,
+    url: &str,
+    response: reqwest::Response,
+) -> Result<FetchedText> {
+    let status = response.status();
+    let http_status = status.as_u16();
+    let headers = response.headers().clone();
+    match response.text().await {
+        Ok(text) => {
+            if !status.is_success() {
+                let run = source_run(
+                    ctx,
+                    source.to_string(),
+                    url.to_string(),
+                    "http_error",
+                    Some(http_status),
+                    Some(format!("HTTP {http_status}")),
+                    Some(excerpt(&text)),
+                );
+                ctx.db.insert_source_run(&run)?;
+                return Err(anyhow!("{source} returned HTTP {http_status}"));
+            }
+
+            match decrypt_coinglass_frontend_payload(&text, &headers) {
+                Ok(decrypted_text) => {
+                    let run = source_run(
+                        ctx,
+                        source.to_string(),
+                        url.to_string(),
+                        "ok",
+                        Some(http_status),
+                        None,
+                        Some(excerpt(&decrypted_text)),
+                    );
+                    let run_id = ctx.db.insert_source_run(&run)?;
+                    Ok(FetchedText {
+                        run_id,
+                        text: decrypted_text,
+                    })
+                }
+                Err(error) => {
+                    let run = source_run(
+                        ctx,
+                        source.to_string(),
+                        url.to_string(),
+                        "decode_error",
+                        Some(http_status),
+                        Some(error.to_string()),
+                        Some(excerpt(&text)),
+                    );
+                    ctx.db.insert_source_run(&run)?;
+                    Err(error).with_context(|| "failed to decrypt CoinGlass frontend payload")
+                }
+            }
+        }
+        Err(error) => {
+            let error_text = format!("failed to read response body for {source}: {error}");
+            let run = source_run(
+                ctx,
+                source.to_string(),
+                url.to_string(),
+                "body_error",
+                Some(http_status),
+                Some(error_text.clone()),
+                None,
+            );
+            ctx.db.insert_source_run(&run)?;
+            Err(anyhow!(error_text))
         }
     }
 }
@@ -1221,6 +1451,104 @@ async fn response_to_fetched_text(
             Err(anyhow!(error_text))
         }
     }
+}
+
+fn decrypt_coinglass_frontend_payload(text: &str, headers: &HeaderMap) -> Result<String> {
+    let encrypted =
+        header_text(headers, "encryption").is_some_and(|value| value.eq_ignore_ascii_case("true"));
+    if !encrypted {
+        return Ok(text.to_string());
+    }
+
+    let v = header_text(headers, "v").context("CoinGlass frontend response missing v header")?;
+    let user = header_text(headers, "user")
+        .context("CoinGlass frontend response missing encrypted user header")?;
+    let seed = coinglass_frontend_seed(v)
+        .with_context(|| format!("unsupported CoinGlass frontend encryption v={v}"))?;
+    let key0 = BASE64
+        .encode(seed.as_bytes())
+        .chars()
+        .take(16)
+        .collect::<String>();
+    let key1 = decrypt_coinglass_ciphertext(user, key0.as_bytes())
+        .context("failed to decrypt CoinGlass frontend session key")?;
+
+    let payload: serde_json::Value =
+        serde_json::from_str(text).context("CoinGlass frontend response is not valid JSON")?;
+    let data = payload
+        .get("data")
+        .and_then(serde_json::Value::as_str)
+        .context("CoinGlass frontend response missing encrypted data field")?;
+    decrypt_coinglass_ciphertext(data, key1.as_bytes())
+        .context("failed to decrypt CoinGlass frontend data field")
+}
+
+fn header_text<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+    headers.get(name)?.to_str().ok()
+}
+
+fn coinglass_frontend_seed(v: &str) -> Option<&'static str> {
+    match v.trim() {
+        "55" => Some("170b070da9654622"),
+        "66" => Some("d6537d845a964081"),
+        "77" => Some("863f08689c97435b"),
+        _ => None,
+    }
+}
+
+fn decrypt_coinglass_ciphertext(ciphertext: &str, key: &[u8]) -> Result<String> {
+    if key.len() != 16 {
+        return Err(anyhow!(
+            "CoinGlass AES key must be 16 bytes, got {}",
+            key.len()
+        ));
+    }
+
+    let mut bytes = BASE64
+        .decode(ciphertext.trim())
+        .context("CoinGlass ciphertext is not valid base64")?;
+    let decrypted = Aes128EcbDec::new_from_slice(key)
+        .map_err(|_| anyhow!("invalid CoinGlass AES-128 key"))?
+        .decrypt_padded_mut::<Pkcs7>(&mut bytes)
+        .map_err(|_| anyhow!("CoinGlass AES-ECB decrypt or PKCS7 unpad failed"))?
+        .to_vec();
+    let inflated = inflate_coinglass_bytes(&decrypted)?;
+    String::from_utf8(inflated).context("CoinGlass decrypted payload is not UTF-8")
+}
+
+fn inflate_coinglass_bytes(bytes: &[u8]) -> Result<Vec<u8>> {
+    for decoder in [InflateKind::Gzip, InflateKind::Zlib, InflateKind::Deflate] {
+        if let Ok(inflated) = inflate_with(bytes, decoder) {
+            return Ok(inflated);
+        }
+    }
+    Err(anyhow!(
+        "CoinGlass decrypted payload is not gzip, zlib, or deflate compressed"
+    ))
+}
+
+fn inflate_with(bytes: &[u8], kind: InflateKind) -> Result<Vec<u8>> {
+    let mut out = Vec::new();
+    match kind {
+        InflateKind::Gzip => GzDecoder::new(bytes).read_to_end(&mut out)?,
+        InflateKind::Zlib => ZlibDecoder::new(bytes).read_to_end(&mut out)?,
+        InflateKind::Deflate => DeflateDecoder::new(bytes).read_to_end(&mut out)?,
+    };
+    Ok(out)
+}
+
+#[derive(Clone, Copy)]
+enum InflateKind {
+    Gzip,
+    Zlib,
+    Deflate,
+}
+
+fn coinglass_api_key() -> Option<String> {
+    env::var("COINGLASS_API_KEY")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
 }
 
 fn insert_observations(db: &Database, run_id: i64, observations: &[Observation]) -> Result<()> {
@@ -1346,8 +1674,8 @@ fn record_known_gaps(db: &Database, selector: SourceSelector) -> Result<()> {
             "P1_EXCHANGE_USDC_BALANCES",
             "Exchange USDC balances",
             "P1",
-            "CoinGlass Exchange Balance List is the configured replacement for Glassnode Studio; set COINGLASS_API_KEY because the API returns business code 401 without the CG-API-KEY header.",
-            "https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC",
+            "CoinGlass Exchange Balance List is collected through Open API when COINGLASS_API_KEY is set, otherwise through the public frontend capi.coinglass.com balance endpoints; history is used for 90D/365D trend observations.",
+            "https://capi.coinglass.com/api/exchange/chain/v3/balance/list?symbol=USDC",
             &[SourceSelector::Market][..],
         ),
         (

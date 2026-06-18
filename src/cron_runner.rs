@@ -21,6 +21,7 @@ pub enum CronTask {
     Decision,
     Quarterly,
     Framework,
+    FullAnalysis,
 }
 
 #[derive(Debug, Subcommand)]
@@ -226,14 +227,34 @@ fn run_task_selection(
     model: Option<String>,
     profile: Option<String>,
 ) -> Result<()> {
+    if task == CronTask::All {
+        for spec in TASKS {
+            run_one(
+                spec,
+                dry_run,
+                no_collect,
+                safe,
+                model.as_deref(),
+                profile.as_deref(),
+            )?;
+        }
+        run_full_analysis(dry_run)?;
+        return Ok(());
+    }
+
+    if task == CronTask::FullAnalysis {
+        run_full_analysis(dry_run)?;
+        return Ok(());
+    }
+
     let selected = match task {
-        CronTask::All => TASKS.iter().collect::<Vec<_>>(),
         CronTask::Monitor => vec![task_by_key("monitor")?],
         CronTask::Daily => vec![task_by_key("daily")?],
         CronTask::Weekly => vec![task_by_key("weekly")?],
         CronTask::Decision => vec![task_by_key("decision")?],
         CronTask::Quarterly => vec![task_by_key("quarterly")?],
         CronTask::Framework => vec![task_by_key("framework")?],
+        CronTask::All | CronTask::FullAnalysis => unreachable!(),
     };
 
     for spec in selected {
@@ -246,6 +267,55 @@ fn run_task_selection(
             profile.as_deref(),
         )?;
     }
+    Ok(())
+}
+
+fn run_full_analysis(dry_run: bool) -> Result<()> {
+    let root_dir = env::current_dir()?;
+    let log_dir = root_dir.join("work_docs/cron_logs");
+    let command = vec![
+        "cargo".to_string(),
+        "run".to_string(),
+        "--release".to_string(),
+        "--".to_string(),
+        "full-analysis".to_string(),
+        "--save".to_string(),
+    ];
+
+    if dry_run {
+        println!("# dry-run full-analysis");
+        println!("cd {} && {}", shell_quote(&root_dir), shell_join(&command));
+        println!();
+        return Ok(());
+    }
+
+    fs::create_dir_all(&log_dir)?;
+    let stamp = Utc::now().to_rfc3339().replace([':', '.'], "-");
+    eprintln!("[crcl-cron] start full-analysis -> work_docs/agent_runs");
+    let output = Command::new("cargo")
+        .args(["run", "--release", "--", "full-analysis", "--save"])
+        .current_dir(&root_dir)
+        .output()
+        .context("failed to start full-analysis")?;
+
+    fs::write(
+        log_dir.join(format!("{stamp}-full-analysis-stdout.log")),
+        &output.stdout,
+    )?;
+    if !output.stderr.is_empty() {
+        fs::write(
+            log_dir.join(format!("{stamp}-full-analysis-stderr.log")),
+            &output.stderr,
+        )?;
+    }
+
+    if !output.status.success() {
+        bail!(
+            "full-analysis failed with status {:?}; see work_docs/cron_logs",
+            output.status.code()
+        );
+    }
+    eprintln!("[crcl-cron] done full-analysis");
     Ok(())
 }
 
@@ -506,6 +576,10 @@ fn print_tasks() {
             spec.category
         );
     }
+    println!(
+        "full-analysis\t{}\tfull-analysis\twork_docs/agent_runs",
+        env::var("CRCL_CRON_FULL_ANALYSIS").unwrap_or_else(|_| "15 11 * * 6".to_string())
+    );
 }
 
 fn install_cron() -> Result<()> {
@@ -561,6 +635,12 @@ fn cron_block() -> Result<String> {
             shell_quote(log_dir.join(format!("{}.log", spec.key)))
         ));
     }
+    lines.push(format!(
+        "{} cd {} && cargo run --release -- cron run full-analysis >> {} 2>&1",
+        env::var("CRCL_CRON_FULL_ANALYSIS").unwrap_or_else(|_| "15 11 * * 6".to_string()),
+        shell_quote(&root),
+        shell_quote(log_dir.join("full-analysis.log"))
+    ));
     lines.push(CRON_END.to_string());
     Ok(lines.join("\n"))
 }

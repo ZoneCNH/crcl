@@ -7,7 +7,9 @@ use scraper::{Html, Selector};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::models::{Event, Filing, Observation};
+use crate::models::{
+    Event, ExchangeUsdcBalance, ExchangeUsdcBalanceHistoryPoint, Filing, Observation,
+};
 
 macro_rules! obs {
     (
@@ -900,14 +902,16 @@ struct AlliumAdjustedTransferRow {
     txn_count_30d: f64,
 }
 
-#[derive(Debug, Deserialize)]
-struct CoinGlassExchangeBalanceResponse {
-    #[serde(default)]
-    code: Option<Value>,
-    #[serde(default)]
-    msg: Option<String>,
-    #[serde(default)]
-    data: Option<Value>,
+#[derive(Debug)]
+pub struct CoinGlassExchangeBalanceSnapshot {
+    pub observations: Vec<Observation>,
+    pub balances: Vec<ExchangeUsdcBalance>,
+}
+
+#[derive(Debug)]
+pub struct CoinGlassExchangeBalanceHistorySnapshot {
+    pub observations: Vec<Observation>,
+    pub points: Vec<ExchangeUsdcBalanceHistoryPoint>,
 }
 
 pub fn parse_visa_allium_usdc_adjusted_transfer_volume(
@@ -945,46 +949,107 @@ pub fn parse_visa_allium_usdc_adjusted_transfer_volume(
     )])
 }
 
-pub fn parse_coinglass_exchange_balance(text: &str, source_url: &str) -> Result<Vec<Observation>> {
-    let response: CoinGlassExchangeBalanceResponse = serde_json::from_str(text)?;
-    if response.data.is_none()
-        && let Some(code) = response.code.as_ref()
-    {
-        let code_text = code
-            .as_str()
-            .map(str::to_string)
-            .unwrap_or_else(|| code.to_string());
-        let message = response
-            .msg
-            .as_deref()
-            .filter(|msg| !msg.trim().is_empty())
-            .unwrap_or("no message");
-        return Err(anyhow!(
-            "CoinGlass API returned code {code_text}: {message}; set COINGLASS_API_KEY for the CG-API-KEY header"
-        ));
-    }
-    let rows = response
-        .data
-        .as_ref()
-        .context("CoinGlass exchange balance response missing data")?
-        .as_array()
-        .context("CoinGlass exchange balance data is not an array")?;
+#[cfg(test)]
+fn parse_coinglass_exchange_balance(text: &str, source_url: &str) -> Result<Vec<Observation>> {
+    Ok(parse_coinglass_exchange_balance_snapshot(text, source_url)?.observations)
+}
+
+pub fn parse_coinglass_exchange_balance_snapshot(
+    text: &str,
+    source_url: &str,
+) -> Result<CoinGlassExchangeBalanceSnapshot> {
+    let payload: Value = serde_json::from_str(text)?;
+    let rows = coinglass_exchange_balance_rows(&payload)?;
 
     let mut total_balance = 0.0;
+    let mut total_change_24h = 0.0;
+    let mut total_change_7d = 0.0;
+    let mut total_change_30d = 0.0;
+    let mut has_change_24h = false;
+    let mut has_change_7d = false;
+    let mut has_change_30d = false;
     let mut components = Vec::new();
+    let mut balances = Vec::new();
+    let observed_at = Utc::now().date_naive().to_string();
     for row in rows {
         let Some(balance) = numeric_field(row, &["balance", "totalBalance", "value", "amount"])
         else {
             continue;
         };
+        let exchange_name = string_field(row, &["exchange", "exchangeName", "name"])
+            .unwrap_or_else(|| "Unknown".to_string());
+        let symbol = string_field(row, &["symbol", "asset"]).unwrap_or_else(|| "USDC".to_string());
+        let balance_change_24h =
+            numeric_field(row, &["balanceChange", "balanceChange24h", "change24h"]);
+        let balance_change_percent_24h = numeric_field(
+            row,
+            &[
+                "balanceChangePercent",
+                "balanceChangePercent24h",
+                "changePercent24h",
+                "changePercent1d",
+                "change1d",
+            ],
+        );
+        let balance_change_7d =
+            numeric_field(row, &["d7BalanceChange", "balanceChange7d", "change7d"]);
+        let balance_change_percent_7d = numeric_field(
+            row,
+            &[
+                "d7BalanceChangePercent",
+                "balanceChangePercent7d",
+                "changePercent7d",
+            ],
+        );
+        let balance_change_30d =
+            numeric_field(row, &["d30BalanceChange", "balanceChange30d", "change30d"]);
+        let balance_change_percent_30d = numeric_field(
+            row,
+            &[
+                "d30BalanceChangePercent",
+                "balanceChangePercent30d",
+                "changePercent30d",
+            ],
+        );
+
         total_balance += balance;
+        if let Some(value) = balance_change_24h {
+            total_change_24h += value;
+            has_change_24h = true;
+        }
+        if let Some(value) = balance_change_7d {
+            total_change_7d += value;
+            has_change_7d = true;
+        }
+        if let Some(value) = balance_change_30d {
+            total_change_30d += value;
+            has_change_30d = true;
+        }
         components.push(json!({
-            "exchange": string_field(row, &["exchange", "exchangeName", "name"]),
+            "exchange": exchange_name,
             "balance": balance,
-            "change_percent_1d": numeric_field(row, &["changePercent24h", "changePercent1d", "change1d", "change24h"]),
-            "change_percent_7d": numeric_field(row, &["changePercent7d", "change7d"]),
-            "change_percent_30d": numeric_field(row, &["changePercent30d", "change30d"]),
+            "balance_change_24h": balance_change_24h,
+            "change_percent_24h": balance_change_percent_24h,
+            "balance_change_7d": balance_change_7d,
+            "change_percent_7d": balance_change_percent_7d,
+            "balance_change_30d": balance_change_30d,
+            "change_percent_30d": balance_change_percent_30d,
         }));
+        balances.push(ExchangeUsdcBalance {
+            exchange_name,
+            symbol,
+            balance,
+            balance_change_24h,
+            balance_change_percent_24h,
+            balance_change_7d,
+            balance_change_percent_7d,
+            balance_change_30d,
+            balance_change_percent_30d,
+            observed_at: observed_at.clone(),
+            source: "CoinGlass Exchange Balance List".to_string(),
+            source_url: source_url.to_string(),
+            attributes: row.clone(),
+        });
     }
 
     if total_balance <= 0.0 {
@@ -993,8 +1058,7 @@ pub fn parse_coinglass_exchange_balance(text: &str, source_url: &str) -> Result<
         ));
     }
 
-    let observed_at = Utc::now().date_naive().to_string();
-    Ok(vec![obs!(
+    let mut observations = vec![obs!(
         "P1_EXCHANGE_USDC_BALANCES",
         "USDC exchange balance, all exchanges",
         "P1",
@@ -1012,7 +1076,347 @@ pub fn parse_coinglass_exchange_balance(text: &str, source_url: &str) -> Result<
             "component_count": components.len(),
             "components": components,
         }),
-    )])
+    )];
+    if has_change_24h {
+        push_exchange_usdc_change_observations(
+            &mut observations,
+            "24H",
+            total_balance,
+            total_change_24h,
+            &observed_at,
+            source_url,
+        );
+    }
+    if has_change_7d {
+        push_exchange_usdc_change_observations(
+            &mut observations,
+            "7D",
+            total_balance,
+            total_change_7d,
+            &observed_at,
+            source_url,
+        );
+    }
+    if has_change_30d {
+        push_exchange_usdc_change_observations(
+            &mut observations,
+            "30D",
+            total_balance,
+            total_change_30d,
+            &observed_at,
+            source_url,
+        );
+    }
+
+    let mut ranked = balances.iter().collect::<Vec<_>>();
+    ranked.sort_by(|left, right| {
+        right
+            .balance
+            .partial_cmp(&left.balance)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    if let Some(largest) = ranked.first() {
+        observations.push(obs!(
+            "P1_EXCHANGE_USDC_LARGEST_EXCHANGE_SHARE",
+            "USDC exchange balance largest exchange share",
+            "P1",
+            "exchange_balance",
+            Some(largest.balance / total_balance * 100.0),
+            Some(largest.exchange_name.clone()),
+            "percent",
+            &observed_at,
+            "CoinGlass Exchange Balance List",
+            source_url,
+            json!({
+                "asset": "USDC",
+                "exchange": largest.exchange_name,
+                "balance": largest.balance,
+                "denominator": total_balance,
+                "method": "largest exchange balance / total CoinGlass exchange USDC balance",
+            }),
+        ));
+    }
+    if ranked.len() >= 3 {
+        let top3 = ranked.iter().take(3).map(|row| row.balance).sum::<f64>();
+        observations.push(obs!(
+            "P1_EXCHANGE_USDC_TOP3_CONCENTRATION",
+            "USDC exchange balance top 3 concentration",
+            "P1",
+            "exchange_balance",
+            Some(top3 / total_balance * 100.0),
+            None,
+            "percent",
+            &observed_at,
+            "CoinGlass Exchange Balance List",
+            source_url,
+            json!({
+                "asset": "USDC",
+                "exchanges": ranked
+                    .iter()
+                    .take(3)
+                    .map(|row| row.exchange_name.clone())
+                    .collect::<Vec<_>>(),
+                "balance": top3,
+                "denominator": total_balance,
+                "method": "top 3 exchange balances / total CoinGlass exchange USDC balance",
+            }),
+        ));
+    }
+
+    Ok(CoinGlassExchangeBalanceSnapshot {
+        observations,
+        balances,
+    })
+}
+
+pub fn parse_coinglass_exchange_balance_history_snapshot(
+    text: &str,
+    source_url: &str,
+) -> Result<CoinGlassExchangeBalanceHistorySnapshot> {
+    let payload: Value = serde_json::from_str(text)?;
+    let data_map = payload
+        .get("dataMap")
+        .and_then(Value::as_object)
+        .context("CoinGlass exchange balance history missing dataMap")?;
+    let date_list = payload
+        .get("dateList")
+        .and_then(Value::as_array)
+        .context("CoinGlass exchange balance history missing dateList")?;
+    let price_list = payload.get("priceList").and_then(Value::as_array);
+
+    let mut points = Vec::new();
+    let mut totals_by_date = BTreeMap::<String, f64>::new();
+    for (exchange_name, series) in data_map {
+        let Some(values) = series.as_array() else {
+            continue;
+        };
+        for (idx, value) in values.iter().enumerate() {
+            let Some(balance) = value_as_f64(value) else {
+                continue;
+            };
+            let Some(observed_at) = date_list.get(idx).and_then(coinglass_timestamp_date) else {
+                continue;
+            };
+            let price_usd = price_list
+                .and_then(|prices| prices.get(idx))
+                .and_then(value_as_f64);
+            *totals_by_date.entry(observed_at.clone()).or_default() += balance;
+            points.push(ExchangeUsdcBalanceHistoryPoint {
+                exchange_name: exchange_name.clone(),
+                symbol: "USDC".to_string(),
+                balance,
+                price_usd,
+                observed_at: observed_at.clone(),
+                source: "CoinGlass Exchange Balance History".to_string(),
+                source_url: source_url.to_string(),
+                attributes: json!({
+                    "exchange": exchange_name,
+                    "index": idx,
+                    "timestamp": date_list.get(idx),
+                    "price_usd": price_usd,
+                }),
+            });
+        }
+    }
+
+    if points.is_empty() {
+        return Err(anyhow!(
+            "CoinGlass exchange balance history parsed no USDC points"
+        ));
+    }
+
+    let latest = totals_by_date
+        .iter()
+        .next_back()
+        .map(|(date, total)| (date.clone(), *total))
+        .context("CoinGlass exchange balance history has no date totals")?;
+    let mut observations = Vec::new();
+    push_exchange_usdc_history_change_observation(
+        &mut observations,
+        "90D",
+        90,
+        &totals_by_date,
+        &latest,
+        source_url,
+    );
+    push_exchange_usdc_history_change_observation(
+        &mut observations,
+        "365D",
+        365,
+        &totals_by_date,
+        &latest,
+        source_url,
+    );
+
+    Ok(CoinGlassExchangeBalanceHistorySnapshot {
+        observations,
+        points,
+    })
+}
+
+fn push_exchange_usdc_change_observations(
+    observations: &mut Vec<Observation>,
+    window: &str,
+    total_balance: f64,
+    total_change: f64,
+    observed_at: &str,
+    source_url: &str,
+) {
+    observations.push(obs!(
+        &format!("P1_EXCHANGE_USDC_BALANCE_{window}_CHANGE"),
+        &format!("USDC exchange balance {window} change"),
+        "P1",
+        "exchange_balance",
+        Some(total_change),
+        None,
+        "USDC",
+        observed_at,
+        "CoinGlass Exchange Balance List",
+        source_url,
+        json!({
+            "asset": "USDC",
+            "window": window,
+            "method": "sum CoinGlass exchange-level balance change",
+        }),
+    ));
+
+    let previous_balance = total_balance - total_change;
+    if previous_balance > 0.0 {
+        observations.push(obs!(
+            &format!("P1_EXCHANGE_USDC_BALANCE_{window}_CHANGE_PCT"),
+            &format!("USDC exchange balance {window} change percent"),
+            "P1",
+            "exchange_balance",
+            Some(total_change / previous_balance * 100.0),
+            None,
+            "percent",
+            observed_at,
+            "CoinGlass Exchange Balance List",
+            source_url,
+            json!({
+                "asset": "USDC",
+                "window": window,
+                "current_balance": total_balance,
+                "previous_balance": previous_balance,
+                "method": "total change / previous total balance",
+            }),
+        ));
+    }
+}
+
+fn push_exchange_usdc_history_change_observation(
+    observations: &mut Vec<Observation>,
+    window: &str,
+    days: i64,
+    totals_by_date: &BTreeMap<String, f64>,
+    latest: &(String, f64),
+    source_url: &str,
+) {
+    let Ok(latest_date) = NaiveDate::parse_from_str(&latest.0, "%Y-%m-%d") else {
+        return;
+    };
+    let target_date = (latest_date - chrono::Duration::days(days)).to_string();
+    let Some((previous_date, previous_balance)) = totals_by_date.range(..=target_date).next_back()
+    else {
+        return;
+    };
+    if previous_date == &latest.0 || *previous_balance <= 0.0 {
+        return;
+    }
+
+    let change = latest.1 - *previous_balance;
+    observations.push(obs!(
+        &format!("P1_EXCHANGE_USDC_BALANCE_{window}_CHANGE"),
+        &format!("USDC exchange balance {window} change"),
+        "P1",
+        "exchange_balance",
+        Some(change),
+        None,
+        "USDC",
+        &latest.0,
+        "CoinGlass Exchange Balance History",
+        source_url,
+        json!({
+            "asset": "USDC",
+            "window": window,
+            "latest_date": latest.0,
+            "previous_date": previous_date,
+            "latest_balance": latest.1,
+            "previous_balance": previous_balance,
+            "method": "latest all-exchange history total minus nearest history total at or before target date",
+        }),
+    ));
+    observations.push(obs!(
+        &format!("P1_EXCHANGE_USDC_BALANCE_{window}_CHANGE_PCT"),
+        &format!("USDC exchange balance {window} change percent"),
+        "P1",
+        "exchange_balance",
+        Some(change / previous_balance * 100.0),
+        None,
+        "percent",
+        &latest.0,
+        "CoinGlass Exchange Balance History",
+        source_url,
+        json!({
+            "asset": "USDC",
+            "window": window,
+            "latest_date": latest.0,
+            "previous_date": previous_date,
+            "latest_balance": latest.1,
+            "previous_balance": previous_balance,
+            "method": "history change / previous history total",
+        }),
+    ));
+}
+
+fn value_as_f64(value: &Value) -> Option<f64> {
+    value.as_f64().or_else(|| {
+        value
+            .as_str()
+            .map(|text| text.replace(',', ""))
+            .and_then(|text| text.parse::<f64>().ok())
+    })
+}
+
+fn coinglass_timestamp_date(value: &Value) -> Option<String> {
+    let raw = value
+        .as_i64()
+        .or_else(|| value.as_f64().map(|value| value as i64))
+        .or_else(|| value.as_str()?.parse::<i64>().ok())?;
+    let seconds = if raw.abs() > 10_000_000_000 {
+        raw / 1000
+    } else {
+        raw
+    };
+    chrono::DateTime::from_timestamp(seconds, 0).map(|dt| dt.date_naive().to_string())
+}
+
+fn coinglass_exchange_balance_rows(payload: &Value) -> Result<&Vec<Value>> {
+    if let Some(rows) = payload.as_array() {
+        return Ok(rows);
+    }
+
+    let data = payload.get("data");
+    if data.is_none()
+        && let Some(code) = payload.get("code")
+    {
+        let code_text = code
+            .as_str()
+            .map(str::to_string)
+            .unwrap_or_else(|| code.to_string());
+        let message = payload
+            .get("msg")
+            .and_then(Value::as_str)
+            .filter(|msg| !msg.trim().is_empty())
+            .unwrap_or("no message");
+        return Err(anyhow!(
+            "CoinGlass API returned code {code_text}: {message}; set COINGLASS_API_KEY or use the frontend fallback"
+        ));
+    }
+
+    data.context("CoinGlass exchange balance response missing data")?
+        .as_array()
+        .context("CoinGlass exchange balance data is not an array")
 }
 
 pub fn parse_circle_platform_metrics(text: &str, source_url: &str) -> Result<Vec<Observation>> {
@@ -3613,6 +4017,62 @@ mod tests {
         assert_eq!(balance.value_num.unwrap(), 3000.75);
         assert_eq!(balance.source, "CoinGlass Exchange Balance List");
         assert_eq!(balance.attributes["component_count"], 2);
+        let largest = observations
+            .iter()
+            .find(|obs| obs.metric_code == "P1_EXCHANGE_USDC_LARGEST_EXCHANGE_SHARE")
+            .unwrap();
+        assert!((largest.value_num.unwrap() - (2000.25 / 3000.75 * 100.0)).abs() < 0.0001);
+    }
+
+    #[test]
+    fn parses_coinglass_frontend_exchange_balance_rows() {
+        let json = r#"[
+          {
+            "exchangeName": "Binance",
+            "symbol": "USDC",
+            "balance": 6029734027.408648,
+            "balanceChange": 74699839.066147,
+            "balanceChangePercent": 1.25,
+            "d7BalanceChange": 292441533.851022,
+            "d7BalanceChangePercent": 5.1,
+            "d30BalanceChange": -672807083.888629,
+            "d30BalanceChangePercent": -10.04
+          },
+          {
+            "exchangeName": "Coinbase Pro",
+            "symbol": "USDC",
+            "balance": 4061366073.419404,
+            "balanceChange": -1858279.908968,
+            "balanceChangePercent": -0.05
+          }
+        ]"#;
+
+        let snapshot =
+            parse_coinglass_exchange_balance_snapshot(json, "https://example.test/coinglass")
+                .unwrap();
+        assert_eq!(snapshot.balances.len(), 2);
+        assert_eq!(snapshot.balances[0].exchange_name, "Binance");
+        assert_eq!(
+            snapshot.balances[0].balance_change_24h.unwrap(),
+            74699839.066147
+        );
+        assert_eq!(
+            snapshot.balances[0].balance_change_percent_30d.unwrap(),
+            -10.04
+        );
+        assert!((snapshot.observations[0].value_num.unwrap() - 10091100100.828052).abs() < 0.001);
+        let change = snapshot
+            .observations
+            .iter()
+            .find(|obs| obs.metric_code == "P1_EXCHANGE_USDC_BALANCE_30D_CHANGE")
+            .unwrap();
+        assert!((change.value_num.unwrap() + 672807083.888629).abs() < 0.001);
+        let largest = snapshot
+            .observations
+            .iter()
+            .find(|obs| obs.metric_code == "P1_EXCHANGE_USDC_LARGEST_EXCHANGE_SHARE")
+            .unwrap();
+        assert_eq!(largest.value_text.as_deref(), Some("Binance"));
     }
 
     #[test]
@@ -3621,6 +4081,39 @@ mod tests {
         let error =
             parse_coinglass_exchange_balance(json, "https://example.test/coinglass").unwrap_err();
         assert!(error.to_string().contains("COINGLASS_API_KEY"));
+    }
+
+    #[test]
+    fn parses_coinglass_frontend_exchange_balance_history() {
+        let json = r#"{
+          "dateList": [1749859200000, 1757721600000, 1765584000000, 1781481600000],
+          "priceList": [1.0, 0.999, 1.001, 1.0],
+          "dataMap": {
+            "Binance": [100.0, 120.0, 150.0, 200.0],
+            "Coinbase Pro": [50.0, 60.0, 70.0, 80.0],
+            "Gate": [null, 10.0, 20.0, 30.0]
+          }
+        }"#;
+
+        let snapshot = parse_coinglass_exchange_balance_history_snapshot(
+            json,
+            "https://example.test/coinglass-history",
+        )
+        .unwrap();
+        assert_eq!(snapshot.points.len(), 11);
+        let latest = snapshot
+            .points
+            .iter()
+            .filter(|point| point.observed_at == "2026-06-15")
+            .map(|point| point.balance)
+            .sum::<f64>();
+        assert_eq!(latest, 310.0);
+        let one_year_pct = snapshot
+            .observations
+            .iter()
+            .find(|obs| obs.metric_code == "P1_EXCHANGE_USDC_BALANCE_365D_CHANGE_PCT")
+            .unwrap();
+        assert!((one_year_pct.value_num.unwrap() - 106.6666666667).abs() < 0.0001);
     }
 
     #[test]

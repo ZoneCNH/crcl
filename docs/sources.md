@@ -45,6 +45,7 @@ NPRM 是 Notice of Proposed Rulemaking，白话就是监管机构发布草案并
 | CoinGecko             | 稳定币市值、价格、竞品规模             | 用于交叉验证         |
 | Dune                  | 链上分布、转账量、地址活跃度           | 仪表盘口径要逐项核对 |
 | CoinMetrics           | 清洗后链上交易量                       | 更适合严谨量化口径   |
+| CoinGlass             | 交易所 USDC balance、24h/7d/30d 变化、历史余额、集中度 | 前台公开接口用于监控；Open API key 仅作交叉验证，需记录前端解密/字段变更风险 |
 | TokenTerminal         | 链和协议层收入、余额、活跃度           | 口径变化要记录       |
 | RWA.xyz               | tokenized treasuries 与 RWA AUM        | 用于收益型竞争监控   |
 | Kaiko / exchange APIs | 交易所深度、流动性、USDC/USDT 交易质量 | 需要记录口径和权限   |

@@ -42,7 +42,7 @@
 | P1-05 | USDC adjusted transfer volume | Visa Onchain Analytics / Allium / CoinMetrics / Dune | visaonchainanalytics.com/transactions；CoinMetrics / Dune 作交叉验证 |
 | P1-06 | Active addresses | Dune / Santiment | dune.com |
 | P1-07 | USDC velocity（自算） | Circle SEC filing / Dune | filing-period：onchain volume ÷ average circulation；周度 adjusted 口径仍需 Dune |
-| P1-08 | Exchange USDC balances | Glassnode / Nansen / TokenTerminal | Glassnode Studio public latest value metadata；tokenterminal.com |
+| P1-08 | Exchange USDC balances / changes / concentration | CoinGlass（Open API 或前台公开 Balance 接口） | `capi.coinglass.com/api/exchange/chain/v3/balance/list?symbol=USDC`；历史接口用于 90D/365D 趋势 |
 | P1-09 | DeFi protocol USDC deposits（Aave / Compound） | DefiLlama protocol API | `api.llama.fi/protocol/aave-v3`；`api.llama.fi/protocol/compound-v3` |
 | P1-10 | Coinbase 平台 USDC 余额 / Base 链增长 | Coinbase filing / DefiLlama / TokenTerminal / Dune | 见 §2-E / §2-F |
 | P1-11 | 竞品市值（PYUSD、FDUSD、USDe、Ondo USDY） | CoinGecko / Ethena / Ondo | coingecko.com |

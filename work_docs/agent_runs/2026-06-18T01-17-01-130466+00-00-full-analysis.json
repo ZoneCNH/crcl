@@ -1,0 +1,238 @@
+{
+  "generated_at": "2026-06-18T01:17:01.130466+00:00",
+  "database": "data/crcl_research.sqlite",
+  "conclusion": "观察 / Base",
+  "action": "维持观察 / 低置信度 Base；补齐阻断源后重跑 valuation-decision 和 full-analysis。",
+  "data_quality_blocked": true,
+  "data_quality_summary": "部分阻断：valuation-decision。完整总分析仍可输出，但不得给增强、Bull 或强仓位动作。",
+  "confidence": "low",
+  "workflow_artifacts": [
+    {
+      "workflow": "monitoring",
+      "category": "monitoring",
+      "final_path": "work_docs/monitoring/2026-06-17T07-14-31-249868+00-00-monitoring-codex-final.md",
+      "meta_path": "work_docs/monitoring/2026-06-17T07-14-31-249868+00-00-monitoring-cron-meta.json",
+      "started_at": "2026-06-17T07:14:31.249868+00:00",
+      "completed_at": "2026-06-17T07:29:34.695019+00:00",
+      "exit_status": 0,
+      "no_collect": false,
+      "conclusion": "CRCL monitoring 本轮结论：紧急。",
+      "data_quality": "data-quality：不阻断 monitoring 输出，但必须降置信度，不能收成“正常 / 完全无缺口”。",
+      "data_quality_blocked": false
+    },
+    {
+      "workflow": "daily-monitor",
+      "category": "daily-monitor",
+      "final_path": "work_docs/daily-monitor/2026-06-17T07-29-34-695268+00-00-daily-monitor-codex-final.md",
+      "meta_path": "work_docs/daily-monitor/2026-06-17T07-29-34-695268+00-00-daily-monitor-cron-meta.json",
+      "started_at": "2026-06-17T07:29:34.695268+00:00",
+      "completed_at": "2026-06-17T07:40:58.207457+00:00",
+      "exit_status": 0,
+      "no_collect": false,
+      "conclusion": "日监结论：观察。本轮出现 P0 状态异常，但未触发信用层降级：Base 官方状态为 Partially Degraded Service，需要当天跟踪；同时未发现 P0 数据硬阻断、监管 P0 或 USDC 脱锚信号。不输出个性化投资建议。",
+      "data_quality": "data-quality：不阻断，降置信度进入判断。",
+      "data_quality_blocked": false
+    },
+    {
+      "workflow": "weekly-review",
+      "category": "weekly-review",
+      "final_path": "work_docs/weekly-review/2026-06-17T07-40-58-207654+00-00-weekly-review-codex-final.md",
+      "meta_path": "work_docs/weekly-review/2026-06-17T07-40-58-207654+00-00-weekly-review-cron-meta.json",
+      "started_at": "2026-06-17T07:40:58.207654+00:00",
+      "completed_at": "2026-06-17T07:56:57.495545+00:00",
+      "exit_status": 0,
+      "no_collect": false,
+      "conclusion": "周度增长质量为中性偏弱：信用层未触发覆盖性降级，RLDC 财务桥仍托底，但 USDC 7D/30D 净发行转负，competition score 只有 48.3，平台化仍是弱验证。本轮不增强、不降级，不上调估值倍数，也不切换支付基础设施框架。非个性化投资建议。",
+      "data_quality": "data-quality 是否阻断：否。",
+      "data_quality_blocked": false
+    },
+    {
+      "workflow": "valuation-decision",
+      "category": "valuation-decision",
+      "final_path": "work_docs/valuation-decision/2026-06-17T07-56-57-495789+00-00-valuation-decision-codex-final.md",
+      "meta_path": "work_docs/valuation-decision/2026-06-17T07-56-57-495789+00-00-valuation-decision-cron-meta.json",
+      "started_at": "2026-06-17T07:56:57.495789+00:00",
+      "completed_at": "2026-06-17T08:15:43.737296+00:00",
+      "exit_status": 0,
+      "no_collect": false,
+      "conclusion": "CRCL 估值仓位复核结论：观察 / 低置信度 Base。本轮不增强、不切 Bull；未确认 Bear 失效或 C-TRIGGER，但 data-quality 阻断完整 valuation-decision 判断。未设置 CRCL_CURRENT_POSITION_PCT，所以只输出研究框架仓位上限，不判断具体加减仓量，也不构成个性化投资建议。",
+      "data_quality": "data-quality：阻断完整判断。统一 batch 为 decision-pack-1781683180424633000-5889，collector 范围 sec,rates,market,events,status，ok_sources=22，warn_sources=1。",
+      "data_quality_blocked": true
+    },
+    {
+      "workflow": "quarterly-earnings",
+      "category": "quarterly-earnings",
+      "final_path": "work_docs/quarterly-earnings/2026-06-17T08-15-43-737989+00-00-quarterly-earnings-codex-final.md",
+      "meta_path": "work_docs/quarterly-earnings/2026-06-17T08-15-43-737989+00-00-quarterly-earnings-cron-meta.json",
+      "started_at": "2026-06-17T08:15:43.737989+00:00",
+      "completed_at": "2026-06-17T08:40:05.132879+00:00",
+      "exit_status": 0,
+      "no_collect": false,
+      "conclusion": "结论：观察 / Base。Q1 2026 财报对 CRCL 是“中性偏强化”，但不升级为“增强”：RLDC 主口径足够强，平台化和竞争项还没共振。此结论不是个性化投资建议。",
+      "data_quality": "不阻断。collector 为 ok_sources=20、warn_sources=1；唯一缺口是 P1_EXCHANGE_USDC_BALANCES，原因是缺 COINGLASS_API_KEY。这影响交易所 USDC 余额和竞争/流动性置信度，不影响 SEC 财报、RLDC、Other revenue、CPN/Arc 判断。",
+      "data_quality_blocked": false
+    },
+    {
+      "workflow": "framework-review",
+      "category": "framework-review",
+      "final_path": "work_docs/framework-review/2026-06-17T08-40-05-133172+00-00-framework-review-codex-final.md",
+      "meta_path": "work_docs/framework-review/2026-06-17T08-40-05-133172+00-00-framework-review-cron-meta.json",
+      "started_at": "2026-06-17T08:40:05.133172+00:00",
+      "completed_at": "2026-06-17T08:59:04.508751+00:00",
+      "exit_status": 0,
+      "no_collect": false,
+      "conclusion": "结论：revise（主处置）。本轮框架不降级，也不增强；保留 Base 主框架和平台化弱验证框架，但需要修正执行层：新增 RLDC margin 输出前口径校验，防止把全口径 RLDC / total revenue and reserve income 误当成主口径 RLDC / reserve income 去套 38% 告警线。附属处置：keep 现有主框架，defer 平台化/监管上调，reject 全口径替代主口径。",
+      "data_quality": "data-quality：不阻断，但降置信度进入判断。collector 已先生成统一 evidence packet：batch_id=decision-pack-1781685764001253000-52607，ok_sources=22、warn_sources=1、missing_items=1。唯一明确缺口是 P1_EXCHANGE_USDC_BALANCES，原因是缺 COINGLASS_API_KEY；无官方源失败、无 ...",
+      "data_quality_blocked": false
+    }
+  ],
+  "key_metrics": [
+    {
+      "item": "USDC 规模",
+      "value": "74.93B USD",
+      "observed_at": "2026-06-17",
+      "source": "DefiLlama",
+      "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+      "interpretation": "核心规模锚；连续净赎回会压制增强。"
+    },
+    {
+      "item": "USDC 储备",
+      "value": "75.10B USD",
+      "observed_at": "2026-06-15",
+      "source": "Circle Transparency",
+      "source_url": "https://www.circle.com/transparency",
+      "interpretation": "信用层锚；储备低于流通量会触发降级复核。"
+    },
+    {
+      "item": "储备覆盖率",
+      "value": "100.23%",
+      "observed_at": "2026-06-17 / 2026-06-15",
+      "source": "derived from Circle Transparency",
+      "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true ; https://www.circle.com/transparency",
+      "interpretation": "高于 100% 支持信用层未坏；低于 100% 触发储备异常复核。"
+    },
+    {
+      "item": "USDC 7D 净发行",
+      "value": "-1.05B USD",
+      "observed_at": "2026-06-15",
+      "source": "Circle Transparency",
+      "source_url": "https://www.circle.com/transparency",
+      "interpretation": "短期增长质量锚；负值进入赎回压力观察。"
+    },
+    {
+      "item": "USDC 30D 净发行",
+      "value": "-1.96B USD",
+      "observed_at": "2026-06-15",
+      "source": "Circle Transparency",
+      "source_url": "https://www.circle.com/transparency",
+      "interpretation": "月度增长质量锚；持续为负不支持增强。"
+    },
+    {
+      "item": "USDC/USD",
+      "value": "0.9997 USD",
+      "observed_at": "2026-06-17",
+      "source": "CoinGecko",
+      "source_url": "https://api.coingecko.com/api/v3/simple/price?ids=usd-coin,tether,bitcoin,ethereum,paypal-usd,first-digital-usd,ethena-usde,ondo-us-dollar-yield&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true",
+      "interpretation": "信用层锚；持续折价超过 0.1% 优先触发风险复核。"
+    },
+    {
+      "item": "Reserve income",
+      "value": "652.51M USD",
+      "observed_at": "2026-03-31",
+      "source": "SEC EDGAR filing",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1876042/000187604226000150/crcl-20260331.htm",
+      "interpretation": "储备收益底座；需结合 Average USDC 和利率判断质量。"
+    },
+    {
+      "item": "RLDC",
+      "value": "287.35M USD",
+      "observed_at": "2026-03-31",
+      "source": "SEC EDGAR filing",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1876042/000187604226000150/crcl-20260331.htm",
+      "interpretation": "分销后留存收入，是估值和财务桥核心。"
+    },
+    {
+      "item": "RLDC 主口径 margin",
+      "value": "44.04%",
+      "observed_at": "2026-03-31",
+      "source": "derived from SEC filing",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1876042/000187604226000150/crcl-20260331.htm",
+      "interpretation": "主告警口径是 RLDC / reserve income；低于 38% 触发降级，高于 40% 支持财务桥。"
+    },
+    {
+      "item": "Other revenue share",
+      "value": "5.997%",
+      "observed_at": "2026-03-31",
+      "source": "SEC EDGAR filing",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1876042/000187604226000150/crcl-20260331.htm",
+      "interpretation": "平台化财务验证；超过 10% 才进入更强验证。"
+    },
+    {
+      "item": "USDC 市占率",
+      "value": "23.876%",
+      "observed_at": "2026-06-17",
+      "source": "DefiLlama",
+      "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+      "interpretation": "竞争结构锚；需和 USDC/USDT ratio 同向验证。"
+    },
+    {
+      "item": "USDC/USDT ratio",
+      "value": "0.4020",
+      "observed_at": "2026-06-17",
+      "source": "DefiLlama",
+      "source_url": "https://stablecoins.llama.fi/stablecoins?includePrices=true",
+      "interpretation": "相对 USDT 的份额强弱指标。"
+    },
+    {
+      "item": "CPN annualized TPV",
+      "value": "8.30B USD/year",
+      "observed_at": "2026-03-31",
+      "source": "Circle press release",
+      "source_url": "https://www.circle.com/pressroom/circle-reports-first-quarter-2026-results",
+      "interpretation": "平台化线索；不能替代 take rate 和收入确认。"
+    },
+    {
+      "item": "Arc 状态",
+      "value": "public testnet status",
+      "observed_at": "2026-06-17",
+      "source": "Arc website",
+      "source_url": "https://www.arc.io/",
+      "interpretation": "平台化线索；测试网不能当作收入验证。"
+    },
+    {
+      "item": "Market cap / annualized RLDC",
+      "value": "18.5x",
+      "observed_at": "2026-06-16 / 2026-03-31",
+      "source": "derived from market price, diluted shares and RLDC",
+      "source_url": "https://query1.finance.yahoo.com/v8/finance/chart/CRCL?range=5d&interval=1d ; https://www.sec.gov/Archives/edgar/data/1876042/000187604226000150/crcl-20260331.htm",
+      "interpretation": "用于 Base/Bull/Bear 估值区间复核；data-quality 阻断时不得直接给强仓位动作。"
+    }
+  ],
+  "source_warnings": [
+    "FinCEN news room | status=network_error | http=- | fetched_at=2026-06-17T08:00:48.318356+00:00 | batch=decision-pack-1781683180424633000-5889 | error sending request for url (https://www.fincen.gov/news-room) | https://www.fincen.gov/news-room",
+    "Treasury news | status=network_error | http=- | fetched_at=2026-06-17T07:18:27.218025+00:00 | batch=decision-pack-1781680644208073000-46449 | error sending request for url (https://home.treasury.gov/news) | https://home.treasury.gov/news",
+    "FINRA consolidated short interest | status=network_error | http=- | fetched_at=2026-06-17T00:52:13.251966+00:00 | batch=decision-pack-1781657502940570000-75633 | error sending request for url (https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest) | https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest"
+  ],
+  "missing_info": [
+    "P1 P1_EXCHANGE_USDC_BALANCES | Exchange USDC balances | Latest collector run failed: CoinGlass API returned code 401: API key missing.; set COINGLASS_API_KEY for the CG-API-KEY header | https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC"
+  ],
+  "contradictions": [
+    "USDC/USD 持续折价超过 0.1%、储备覆盖异常、核心银行通道中断或正式执法行动，覆盖财务桥结论。",
+    "RLDC 主口径低于 38% 且无一次性解释，触发财务桥降级。",
+    "competition score 跌破 40、USDC 连续净赎回扩大或 USDC/USDT ratio 继续走弱，触发竞争降级复核。",
+    "Other revenue share 未超过 10% 或 CPN/Arc 缺收入归属时，不能切换到支付基础设施股框架。",
+    "官方监管源不可达或缺 section-level 原文解析时，不能把监管结论写成已确认无风险。"
+  ],
+  "next_actions": [
+    "补齐 `COINGLASS_API_KEY` 或替代来源，恢复 `P1_EXCHANGE_USDC_BALANCES`。",
+    "复核 Treasury / FinCEN / OCC / OFAC / FDIC / SEC / CFTC 官方源，补 section-level 监管解析。",
+    "人工确认 Base status incident 的 component、duration、resolution 和是否影响 USDC 转账/赎回。",
+    "在下一次财报后核对 `RLDC / reserve income` 主口径，避免用全口径 margin 套 38% 告警线。",
+    "下一轮 Circle Transparency 更新后复核 USDC circulation、reserves、7D / 30D net issuance。",
+    "周度复盘补 D4/D5 的 4 周趋势、borrow utilization、活跃地址和收益型稳定币 AUM。"
+  ],
+  "saved_paths": [
+    "work_docs/agent_runs/2026-06-18T01-17-01-130466+00-00-full-analysis.md",
+    "work_docs/agent_runs/2026-06-18T01-17-01-130466+00-00-full-analysis.json"
+  ]
+}

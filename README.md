@@ -12,6 +12,7 @@
   - decision
   - quarterly
   - framework
+  - full-analysis
 ```
 
 定时执行
@@ -25,6 +26,7 @@ cargo run --release -- cron install
   decision   周一到周五 16:00 运行
   quarterly  2/5/8/11 月 15 日 10:00 运行
   framework  每周六 10:30 运行
+  full-analysis 每周六 11:15 运行，并且 cron run all 会在六个任务后自动生成
   
 # 取消
 • 在仓库根目录执行：
@@ -84,6 +86,7 @@ cargo run --release -- agent-run --workflow weekly-review      # 周度复盘评
 cargo run --release -- agent-run --workflow quarterly-earnings # 季度财报判断
 cargo run --release -- agent-run --workflow valuation-decision # 估值 / 仓位 / 交易决策
 cargo run --release -- agent-run --workflow framework-review   # 数据健康 + autoresearch 框架自检闭环
+cargo run --release -- full-analysis --save                    # 完整跑批后的总分析报告
 ```
 
 只读已有数据库时：
@@ -111,6 +114,7 @@ cargo run --release -- agent-run --workflow daily-monitor --save
 | `decision` | 周一至周五 16:00 | `work_docs/valuation-decision/` |
 | `quarterly` | 2/5/8/11 月 15 日 10:00 | `work_docs/quarterly-earnings/` |
 | `framework` | 每周六 10:30 | `work_docs/framework-review/` |
+| `full-analysis` | 每周六 11:15 | `work_docs/agent_runs/` |
 
 一键安装或更新 cron：
 
@@ -136,11 +140,20 @@ cargo run --release -- cron run all --dry-run
 cargo run --release -- cron run all
 ```
 
+`cron run all` 会按顺序运行 monitor、daily、weekly、decision、quarterly、framework，并在最后自动执行：
+
+```bash
+cargo run --release -- full-analysis --save
+```
+
+总分析报告会读取最新分类 workflow final 和本地 SQLite，不重新刷新外部数据，默认保存到 `work_docs/agent_runs/`。
+
 只运行某个任务：
 
 ```bash
 cargo run --release -- cron run monitor
 cargo run --release -- cron run weekly
+cargo run --release -- cron run full-analysis
 ```
 
 移除自动任务：

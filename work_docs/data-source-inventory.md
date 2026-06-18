@@ -6,7 +6,7 @@
 
 本项目需要的数据源分成五类：市场与链上、利率与储备、SEC 财务披露、事件与监管、技术状态。
 
-当前自动采集器已经覆盖大部分公开可自动化来源，并落到 `data/crcl_research.sqlite`。本次把原“后续补齐”里的 CPN、Arc、机构持仓和 Other revenue share 改为可自动解析；Exchange USDC balances 已从 Glassnode 切到 CoinGlass 公开 API，但该 API 需要 `COINGLASS_API_KEY`。
+当前自动采集器已经覆盖大部分公开可自动化来源，并落到 `data/crcl_research.sqlite`。本次把原“后续补齐”里的 CPN、Arc、机构持仓和 Other revenue share 改为可自动解析；Exchange USDC balances 已从 Glassnode 切到 CoinGlass，优先用 Open API（需 `COINGLASS_API_KEY`），无 key 时用前台公开接口 fallback。
 
 - `collection_batches=8`
 - `source_runs=152`
@@ -19,7 +19,7 @@
 
 | 优先级 | 指标 | 当前问题 | 来源 |
 | --- | --- | --- | --- |
-| P1 | `P1_EXCHANGE_USDC_BALANCES` / Exchange USDC balances | 已改用 CoinGlass Exchange Balance List；官方文档确认支持 `USDC`，但无 `CG-API-KEY` 时接口返回 `API key missing` | `https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC` |
+| P1 | `P1_EXCHANGE_USDC_BALANCES` / Exchange USDC balances | 已改用 CoinGlass；Open API 无 `CG-API-KEY` 时返回 `API key missing`，但前台公开接口 fallback 已可自动落库 | `https://capi.coinglass.com/api/exchange/chain/v3/balance/list?symbol=USDC` |
 
 ## 状态说明
 
@@ -75,7 +75,7 @@
 | USDC transfer count | CoinMetrics Community API | 同上 | 已落库 | `observations`：`P1_USDC_TRANSFER_COUNT` |
 | USDC adjusted transfer value 交叉验证 | CoinMetrics Pro / Dune | CoinMetrics Pro；`https://dune.com` | 部分 | 主自动源已改用 Visa / Allium；CoinMetrics Community API 对 `TxTfrValAdjUSD` 需要付费凭证 |
 | USDC velocity | Circle SEC filing；Dune / CoinMetrics Pro 周度 adjusted 口径 | Circle SEC filings；`https://dune.com` | 部分 | filing-period velocity 已从 Circle filing 落库：`P1_USDC_VELOCITY`；周度 adjusted velocity 未自动化 |
-| Exchange USDC balances | CoinGlass Exchange Balance List | `https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC`；文档入口 `https://docs.coinglass.com/reference/exchange-balance-list` | 需凭证 | `observations`：`P1_EXCHANGE_USDC_BALANCES`；公开 API 支持 USDC，但需环境变量 `COINGLASS_API_KEY` |
+| Exchange USDC balances / changes / concentration / history | CoinGlass Exchange Balance List + frontend Balance endpoints | Open API：`https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC`；前台 fallback：`https://capi.coinglass.com/api/exchange/chain/v3/balance/list?symbol=USDC`、`https://capi.coinglass.com/api/exchange/chain/v3/balance?symbol=USDC&exName=all&size=300&resolution=7` | 已落库 | `observations`：`P1_EXCHANGE_USDC_BALANCES`、24h/7d/30d change、30D/90D/365D change、largest/top3 concentration；明细表：`exchange_usdc_balances`、`exchange_usdc_balance_history`；Open API key 仅作优先交叉验证 |
 | Aave V3 USDC deposits | DefiLlama protocol API | `https://api.llama.fi/protocol/aave-v3` | 已落库 | `observations`：协议总额和链级拆分 |
 | Compound V3 USDC deposits | DefiLlama protocol API | `https://api.llama.fi/protocol/compound-v3` | 已落库 | `observations`：协议总额和链级拆分 |
 | Aave + Compound aggregate USDC deposits | DefiLlama protocol API | `https://api.llama.fi/protocol/aave-v3`；`https://api.llama.fi/protocol/compound-v3` | 已落库 | `observations`：`P1_DEFI_PROTOCOL_USDC_DEPOSITS` |
@@ -162,6 +162,6 @@
 
 | 优先级 | 要补什么 | 建议做法 |
 | --- | --- | --- |
-| P1 | Exchange USDC balances | 已改为 CoinGlass Exchange Balance List；配置 `COINGLASS_API_KEY` 后可自动落库，CryptoQuant 页面当前有登录/Cloudflare 门槛 |
+| P1 | Exchange USDC balances | 已改为 CoinGlass Exchange Balance List + 前台 fallback；配置 `COINGLASS_API_KEY` 后可自动优先用官方 Open API，CryptoQuant 页面当前有登录/Cloudflare 门槛 |
 | P1 | Dune 固定 query / 截图 | 增加 `DUNE_API_KEY` 和固定 query id；把截图/口径版本记录到 `events` 或单独表 |
 | P2 | Compliance cost ratio | 为 Circle 10-Q/10-K 的 compliance/legal/regulatory affairs 成本建立文本/XBRL 抽取规则；无法稳定抽取时先人工录入 |

@@ -41,6 +41,10 @@ Sub agent / 总控 agent 负责：
 做一次 CRCL 框架自检，自动调用项目 agent，判断 keep / revise / defer / reject，不要直接改文档。
 ```
 
+```text
+基于最近一次完整跑批结果，调用总分析 agent，生成 CRCL 总分析报告并保存到 work_docs/agent_runs/。
+```
+
 Codex 看到这类提示词后，应按根目录 `AGENTS.md` 选择 workflow、数据刷新策略和 agent 组合。下面的命令是 Codex 可选择使用的本地自动执行层。
 
 Prompt 驱动运行默认保存最终产物到 `work_docs/agent_runs/`；用户明确说“不保存”时才跳过 `--save`。
@@ -54,6 +58,7 @@ cargo run --release -- agent-run --workflow weekly-review
 cargo run --release -- agent-run --workflow quarterly-earnings
 cargo run --release -- agent-run --workflow valuation-decision
 cargo run --release -- agent-run --workflow framework-review
+cargo run --release -- full-analysis --save
 ```
 
 JSON 输出：
@@ -115,6 +120,7 @@ cargo run --release -- decision-pack --workflow weekly-review --no-collect
 | `quarterly-earnings` | 财报数字层和叙事层复核 | sec、rates、market、events | 财报强化 / 中性 / 降级，T+0/T+24h/T+48h 动作 |
 | `valuation-decision` | 估值、情景、仓位和交易动作 | sec、rates、market、events、status | Bull/Base/Bear、仓位上限、加减仓动作 |
 | `framework-review` | 数据健康和 autoresearch 框架自检 | all | keep / revise / defer / reject，写入建议和补采动作 |
+| `full-analysis` | 完整跑批后的跨 workflow 总分析 | 已保存 final + SQLite | 观察/Base/Bear、核心指标、missing_info、下一步和保存路径 |
 
 ## Dispatch 规则
 
@@ -156,4 +162,5 @@ cargo run --release -- agent-run --workflow weekly-review --no-collect --format 
 cargo run --release -- agent-run --workflow quarterly-earnings --no-collect --limit 16
 cargo run --release -- agent-run --workflow valuation-decision --no-collect --limit 16 --current-position-pct 50
 cargo run --release -- agent-run --workflow framework-review --no-collect --limit 16
+cargo run --release -- full-analysis --save
 ```

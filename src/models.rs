@@ -27,6 +27,35 @@ pub struct MissingItem {
 }
 
 #[derive(Clone, Debug, Serialize)]
+pub struct ExchangeUsdcBalance {
+    pub exchange_name: String,
+    pub symbol: String,
+    pub balance: f64,
+    pub balance_change_24h: Option<f64>,
+    pub balance_change_percent_24h: Option<f64>,
+    pub balance_change_7d: Option<f64>,
+    pub balance_change_percent_7d: Option<f64>,
+    pub balance_change_30d: Option<f64>,
+    pub balance_change_percent_30d: Option<f64>,
+    pub observed_at: String,
+    pub source: String,
+    pub source_url: String,
+    pub attributes: Value,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ExchangeUsdcBalanceHistoryPoint {
+    pub exchange_name: String,
+    pub symbol: String,
+    pub balance: f64,
+    pub price_usd: Option<f64>,
+    pub observed_at: String,
+    pub source: String,
+    pub source_url: String,
+    pub attributes: Value,
+}
+
+#[derive(Clone, Debug, Serialize)]
 pub struct Filing {
     pub company: String,
     pub cik: String,

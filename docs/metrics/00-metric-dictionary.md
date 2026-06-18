@@ -38,7 +38,7 @@ Crypto beta 是加密资产联动，白话就是 BTC/ETH 走势会不会带动 C
 | Adjusted transfer volume    | 清洗后转账量          | CoinMetrics / Dune          | 剔除刷量与自转账                       |
 | Active addresses            | 活跃地址              | Dune / Santiment            | 判断真实用户活跃度                     |
 | Velocity                    | 转账量 / 流通量       | Circle SEC filing / Dune    | 周转增强但不直接等于收入               |
-| Exchange balances           | 交易所 USDC 余额      | Nansen / TokenTerminal      | 偏交易 beta，质量低于支付场景          |
+| Exchange balances           | 交易所 USDC 余额、变化、集中度 | CoinGlass（Open API / 前台 Balance fallback） | 偏交易 beta，质量低于支付场景；30D 流出和 top3 集中度要单独看 |
 | DeFi protocol deposits      | DeFi 协议 USDC 存量   | DefiLlama protocol API      | 判断资金用途                           |
 | Tokenized Treasury AUM      | 代币化美债总 AUM / BUIDL AUM | RWA.xyz public treasuries page | 判断收益型产品是否分流闲置美元         |
 
@@ -173,7 +173,7 @@ P2 指标每项 ±1 分
 | Adjusted transfer volume | 参照清洗后近 4 周均值 | 清洗后量增且活跃地址同增 | 清洗后量连续下降 | CoinMetrics / Dune | 每周 |
 | Active addresses | 参照季末活跃地址数 | 连续 4 周创新高 | 连续 4 周下降 > 10% | Dune / Santiment | 每周 |
 | Velocity | 参照近期均值 | 周转率提升且活跃地址同增 | 周转率持续下降 | Circle SEC filing / Dune | 每周 |
-| Exchange balances | 参照季末交易所余额 | 交易所余额大幅增加（交易 beta 强） | 交易所余额持续流出 > 10% | Nansen / TokenTerminal | 每周 |
+| Exchange balances | 参照季末交易所余额 | 交易所余额大幅增加（交易 beta 强） | 交易所余额 30D 持续流出 > 10%，或 top3 集中度异常上升 | CoinGlass | 每周 |
 | DeFi protocol deposits | 参照季末 DeFi 存量 | 存量大幅增加（Aave / Compound） | 连续 4 周净流出 | DefiLlama protocol API | 每周 |
 
 ### 补充：框架关键临界值（衍生指标）

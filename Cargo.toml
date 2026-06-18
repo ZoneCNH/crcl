@@ -6,9 +6,14 @@ description = "CRCL research data collector with SQLite storage"
 license = "MIT"
 
 [dependencies]
+aes = "0.8"
 anyhow = "1.0"
+base64 = "0.22"
 chrono = { version = "0.4", features = ["clock", "serde"] }
+cipher = { version = "0.4", features = ["block-padding"] }
 clap = { version = "4.5", features = ["derive", "env"] }
+ecb = "0.1"
+flate2 = "1.0"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "native-tls", "http2", "charset", "gzip", "brotli", "deflate", "zstd"] }
 roxmltree = "0.20"
 rusqlite = { version = "0.32", features = ["bundled"] }

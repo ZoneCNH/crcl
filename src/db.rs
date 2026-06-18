@@ -5,7 +5,10 @@ use chrono::Utc;
 use rusqlite::{Connection, params};
 use serde::Serialize;
 
-use crate::models::{Event, Filing, MissingItem, Observation, SourceRun};
+use crate::models::{
+    Event, ExchangeUsdcBalance, ExchangeUsdcBalanceHistoryPoint, Filing, MissingItem, Observation,
+    SourceRun,
+};
 
 pub struct Database {
     conn: Connection,
@@ -133,6 +136,47 @@ impl Database {
 
             CREATE INDEX IF NOT EXISTS idx_observations_metric_time
                 ON observations(metric_code, observed_at);
+
+            CREATE TABLE IF NOT EXISTS exchange_usdc_balances (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER,
+                exchange_name TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                balance REAL NOT NULL,
+                balance_change_24h REAL,
+                balance_change_percent_24h REAL,
+                balance_change_7d REAL,
+                balance_change_percent_7d REAL,
+                balance_change_30d REAL,
+                balance_change_percent_30d REAL,
+                observed_at TEXT NOT NULL,
+                source TEXT NOT NULL,
+                source_url TEXT NOT NULL,
+                attributes_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(run_id) REFERENCES source_runs(id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_exchange_usdc_balances_time
+                ON exchange_usdc_balances(observed_at, exchange_name);
+
+            CREATE TABLE IF NOT EXISTS exchange_usdc_balance_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER,
+                exchange_name TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                balance REAL NOT NULL,
+                price_usd REAL,
+                observed_at TEXT NOT NULL,
+                source TEXT NOT NULL,
+                source_url TEXT NOT NULL,
+                attributes_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(run_id) REFERENCES source_runs(id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_exchange_usdc_balance_history_time
+                ON exchange_usdc_balance_history(symbol, observed_at, exchange_name);
 
             CREATE TABLE IF NOT EXISTS missing_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -308,6 +352,72 @@ impl Database {
                 obs.source,
                 obs.source_url,
                 obs.attributes.to_string(),
+                Utc::now().to_rfc3339()
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn insert_exchange_usdc_balance(
+        &self,
+        run_id: i64,
+        row: &ExchangeUsdcBalance,
+    ) -> Result<()> {
+        self.conn.execute(
+            r#"
+            INSERT INTO exchange_usdc_balances
+                (run_id, exchange_name, symbol, balance, balance_change_24h,
+                 balance_change_percent_24h, balance_change_7d,
+                 balance_change_percent_7d, balance_change_30d,
+                 balance_change_percent_30d, observed_at, source, source_url,
+                 attributes_json, created_at)
+            VALUES
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+            "#,
+            params![
+                run_id,
+                row.exchange_name,
+                row.symbol,
+                row.balance,
+                row.balance_change_24h,
+                row.balance_change_percent_24h,
+                row.balance_change_7d,
+                row.balance_change_percent_7d,
+                row.balance_change_30d,
+                row.balance_change_percent_30d,
+                row.observed_at,
+                row.source,
+                row.source_url,
+                row.attributes.to_string(),
+                Utc::now().to_rfc3339()
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn insert_exchange_usdc_balance_history_point(
+        &self,
+        run_id: i64,
+        row: &ExchangeUsdcBalanceHistoryPoint,
+    ) -> Result<()> {
+        self.conn.execute(
+            r#"
+            INSERT INTO exchange_usdc_balance_history
+                (run_id, exchange_name, symbol, balance, price_usd, observed_at,
+                 source, source_url, attributes_json, created_at)
+            VALUES
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+            "#,
+            params![
+                run_id,
+                row.exchange_name,
+                row.symbol,
+                row.balance,
+                row.price_usd,
+                row.observed_at,
+                row.source,
+                row.source_url,
+                row.attributes.to_string(),
                 Utc::now().to_rfc3339()
             ],
         )?;
