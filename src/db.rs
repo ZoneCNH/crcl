@@ -6,8 +6,8 @@ use rusqlite::{Connection, params};
 use serde::Serialize;
 
 use crate::models::{
-    Event, ExchangeUsdcBalance, ExchangeUsdcBalanceHistoryPoint, Filing, MissingItem, Observation,
-    SourceRun,
+    BinanceSpotKline, Event, ExchangeUsdcBalance, ExchangeUsdcBalanceHistoryPoint, Filing,
+    MissingItem, Observation, SourceRun,
 };
 
 pub struct Database {
@@ -177,6 +177,34 @@ impl Database {
 
             CREATE INDEX IF NOT EXISTS idx_exchange_usdc_balance_history_time
                 ON exchange_usdc_balance_history(symbol, observed_at, exchange_name);
+
+            CREATE TABLE IF NOT EXISTS binance_spot_klines (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER,
+                symbol TEXT NOT NULL,
+                interval TEXT NOT NULL,
+                open_time_ms INTEGER NOT NULL,
+                close_time_ms INTEGER NOT NULL,
+                open REAL NOT NULL,
+                high REAL NOT NULL,
+                low REAL NOT NULL,
+                close REAL NOT NULL,
+                volume REAL NOT NULL,
+                quote_volume REAL NOT NULL,
+                trade_count INTEGER NOT NULL,
+                taker_buy_base_volume REAL NOT NULL,
+                taker_buy_quote_volume REAL NOT NULL,
+                observed_at TEXT NOT NULL,
+                source TEXT NOT NULL,
+                source_url TEXT NOT NULL,
+                attributes_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(symbol, interval, open_time_ms),
+                FOREIGN KEY(run_id) REFERENCES source_runs(id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_binance_spot_klines_symbol_time
+                ON binance_spot_klines(symbol, interval, open_time_ms);
 
             CREATE TABLE IF NOT EXISTS missing_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -414,6 +442,60 @@ impl Database {
                 row.symbol,
                 row.balance,
                 row.price_usd,
+                row.observed_at,
+                row.source,
+                row.source_url,
+                row.attributes.to_string(),
+                Utc::now().to_rfc3339()
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn upsert_binance_spot_kline(&self, run_id: i64, row: &BinanceSpotKline) -> Result<()> {
+        self.conn.execute(
+            r#"
+            INSERT INTO binance_spot_klines
+                (run_id, symbol, interval, open_time_ms, close_time_ms, open, high,
+                 low, close, volume, quote_volume, trade_count, taker_buy_base_volume,
+                 taker_buy_quote_volume, observed_at, source, source_url, attributes_json,
+                 created_at)
+            VALUES
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15,
+                 ?16, ?17, ?18, ?19)
+            ON CONFLICT(symbol, interval, open_time_ms) DO UPDATE SET
+                run_id = excluded.run_id,
+                close_time_ms = excluded.close_time_ms,
+                open = excluded.open,
+                high = excluded.high,
+                low = excluded.low,
+                close = excluded.close,
+                volume = excluded.volume,
+                quote_volume = excluded.quote_volume,
+                trade_count = excluded.trade_count,
+                taker_buy_base_volume = excluded.taker_buy_base_volume,
+                taker_buy_quote_volume = excluded.taker_buy_quote_volume,
+                observed_at = excluded.observed_at,
+                source = excluded.source,
+                source_url = excluded.source_url,
+                attributes_json = excluded.attributes_json,
+                created_at = excluded.created_at
+            "#,
+            params![
+                run_id,
+                row.symbol,
+                row.interval,
+                row.open_time_ms,
+                row.close_time_ms,
+                row.open,
+                row.high,
+                row.low,
+                row.close,
+                row.volume,
+                row.quote_volume,
+                row.trade_count,
+                row.taker_buy_base_volume,
+                row.taker_buy_quote_volume,
                 row.observed_at,
                 row.source,
                 row.source_url,

@@ -62,6 +62,19 @@
 
 ---
 
+## 第四层：场内现货辅助信号一致性检查
+
+Binance Spot 只用于场内现货辅助分析。本层检查它是否被正确使用，防止把币安场内数据误写成 CRCL 正股或 USDC 全市场结论。
+
+| 检查编号 | 检查内容 | 允许误差 / 判断规则 | 不一致时动作 |
+| -------- | -------- | ------------------- | ------------ |
+| SP-01 | `P1_BINANCE_SPOT_CRCLB_HISTORY_DAYS` 少于 30 时，周报和估值仍必须做短样本场内分析，并标注不能外推 30D/90D | 少于 30 就写采集失败/不分析，或仍写 30D/90D 长线趋势 = 不一致 | 改为“观察（短样本）”，分析 status、daily close、实际窗口日均成交额、spread/depth，并说明不阻断 data-quality |
+| SP-02 | `P1_BINANCE_SPOT_CRCLB_30D_QUOTE_VOLUME` 只能说明 Binance 场内流动性 | 用它替代 NYSE:CRCL 成交量或直接改估值倍数 = 不一致 | 改写为场内流动性观察，并补 NYSE:CRCL 成交量来源 |
+| SP-03 | `P1_BINANCE_SPOT_USDCUSDT_DAILY_CLOSE` 偏离 1.0 超 30 bps 或 `SPREAD_BPS` 超 5 bps 时，必须写交叉验证要求 | 直接写 USDC 全市场脱锚 = 不一致 | 补 CoinGecko/Circle/Curve/交易所余额交叉验证 |
+| SP-04 | agent-run 输出若包含 Binance Spot 证据，必须同时说明其辅助边界 | 只列数值、不写边界 = 不一致 | 在 key evidence 或 spot signals 中补“不得替代 NYSE:CRCL / Circle 官方 / 全市场 USDC” |
+
+---
+
 ## missing_info 管理规则
 
 ### 触发条件
@@ -161,6 +174,12 @@
   EV-04 Adjusted EBITDA 与 Bear case：通过 / 触发信用层检查 → 处理：
   EV-05 降级项与估值折价注释：通过 / 缺失注释项：___ → 处理：
 
+第四层（场内现货辅助信号）：
+  SP-01 CRCLB 短样本分析边界：通过 / 被误写为失败或未分析 / 长线窗口不足未标注 → 处理：
+  SP-02 CRCLB 场内流动性边界：通过 / 被误用为 NYSE 成交量 → 处理：
+  SP-03 USDCUSDT 场内价格质量交叉验证：通过 / 缺交叉验证 → 处理：
+  SP-04 Binance Spot 辅助边界披露：通过 / 缺边界说明 → 处理：
+
 missing_info 新增：
   （无 / 新增 M-XXX：文件___, 指标___, 预期日期___）
 
@@ -177,4 +196,4 @@ missing_info 追踪更新：
 
 > **执行规范**：本文件每次检查只追加记录，不修改历史记录。阈值或规则变更在对应章节修改并更新本文件版本号（格式：YYYY-MM-DD）。
 >
-> 当前版本：**2026-05-11**
+> 当前版本：**2026-06-22**

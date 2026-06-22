@@ -123,6 +123,7 @@ enum Command {
 pub enum SourceSelector {
     All,
     Market,
+    BinanceSpot,
     Rates,
     Sec,
     Events,
@@ -138,6 +139,7 @@ pub enum AgentProfile {
     Financial,
     Regulatory,
     Competition,
+    SpotVenue,
     Platform,
     Risk,
     Autoresearch,
@@ -514,6 +516,7 @@ fn selectors_for_profile(profile: AgentProfile) -> Vec<SourceSelector> {
         ],
         AgentProfile::Regulatory => vec![SourceSelector::Events, SourceSelector::Status],
         AgentProfile::Competition => vec![SourceSelector::Market, SourceSelector::Events],
+        AgentProfile::SpotVenue => vec![SourceSelector::BinanceSpot],
         AgentProfile::Platform => vec![
             SourceSelector::Events,
             SourceSelector::Sec,
@@ -530,37 +533,46 @@ fn print_agent_context(
     format: OutputFormat,
     collector_run: Option<CollectorRunOutput>,
 ) -> Result<()> {
+    let effective_limit = if profile == AgentProfile::SpotVenue {
+        limit.max(32)
+    } else {
+        limit
+    };
     let summary = db.summary()?;
     let recent_source_runs = db
-        .recent_source_runs(limit.saturating_mul(20).max(100))?
+        .recent_source_runs(effective_limit.saturating_mul(20).max(100))?
         .into_iter()
         .filter(|run| source_run_matches_profile(profile, run))
-        .take(limit)
+        .take(effective_limit)
         .collect::<Vec<_>>();
     let latest_observations = db
         .latest_observations()?
         .into_iter()
         .filter(|obs| observation_matches_profile(profile, obs))
-        .take(limit)
+        .take(effective_limit)
         .collect::<Vec<_>>();
-    let recent_filings = db.recent_filings(limit)?;
+    let recent_filings = if profile == AgentProfile::SpotVenue {
+        Vec::new()
+    } else {
+        db.recent_filings(effective_limit)?
+    };
     let recent_events = db
-        .recent_events(limit.saturating_mul(20).max(100))?
+        .recent_events(effective_limit.saturating_mul(20).max(100))?
         .into_iter()
         .filter(|event| event_matches_profile(profile, event))
-        .take(limit)
+        .take(effective_limit)
         .collect::<Vec<_>>();
     let missing_items = db
         .missing_items()?
         .into_iter()
         .filter(|item| missing_item_matches_profile(profile, item))
-        .take(limit)
+        .take(effective_limit)
         .collect::<Vec<_>>();
 
     let output = AgentContextOutput {
         profile: profile_label(profile).to_string(),
         database: database.display().to_string(),
-        limit,
+        limit: effective_limit,
         collector_run,
         summary,
         recent_source_runs,
@@ -699,6 +711,17 @@ fn new_batch_id(command: &str) -> String {
 }
 
 fn source_run_matches_profile(profile: AgentProfile, run: &RecentSourceRun) -> bool {
+    if profile == AgentProfile::SpotVenue {
+        if run.selector.as_deref() == Some("binance-spot") {
+            return true;
+        }
+        let text = format!("{} {}", run.source, run.url).to_ascii_lowercase();
+        return text.contains("binance spot")
+            || text.contains("api.binance.com/api/v3")
+            || text.contains("crclbusdt")
+            || text.contains("usdcusdt");
+    }
+
     if matches!(
         profile,
         AgentProfile::Collector
@@ -769,6 +792,7 @@ fn source_run_matches_profile(profile: AgentProfile, run: &RecentSourceRun) -> b
         ]
         .iter()
         .any(|needle| source.contains(needle)),
+        AgentProfile::SpotVenue => false,
         AgentProfile::Platform => [
             "circle pressroom",
             "circle investor",
@@ -792,6 +816,11 @@ fn source_run_matches_profile(profile: AgentProfile, run: &RecentSourceRun) -> b
 }
 
 fn observation_matches_profile(profile: AgentProfile, obs: &RecentObservation) -> bool {
+    if profile == AgentProfile::SpotVenue {
+        return obs.metric_code.starts_with("P1_BINANCE_SPOT_")
+            || obs.category.starts_with("binance_spot");
+    }
+
     if matches!(
         profile,
         AgentProfile::Collector
@@ -836,6 +865,7 @@ fn observation_matches_profile(profile: AgentProfile, obs: &RecentObservation) -
                 | "peg_liquidity"
                 | "equity_market"
         ),
+        AgentProfile::SpotVenue => false,
         AgentProfile::Platform => matches!(
             category,
             "income_statement"
@@ -898,6 +928,7 @@ fn event_matches_profile(profile: AgentProfile, event: &RecentEvent) -> bool {
         AgentProfile::Competition | AgentProfile::Platform => {
             source.contains("circle pressroom") || source.contains("circle investor")
         }
+        AgentProfile::SpotVenue => false,
         AgentProfile::Collector
         | AgentProfile::DataQuality
         | AgentProfile::Source
@@ -954,6 +985,9 @@ fn missing_item_matches_profile(profile: AgentProfile, item: &models::MissingIte
                 || code.starts_with("P0_CURVE")
                 || code == "P0_CIRCLE_MINTED_REDEEMED"
         }
+        AgentProfile::SpotVenue => {
+            code.starts_with("P1_BINANCE_SPOT_") || collector.contains("binance")
+        }
         AgentProfile::Platform => {
             code.starts_with("P2_CIRCLE")
                 || code.starts_with("P1_COINBASE")
@@ -984,6 +1018,7 @@ fn selector_labels_for_profile(profile: AgentProfile) -> &'static [&'static str]
         AgentProfile::Financial => &["sec", "rates", "market"],
         AgentProfile::Regulatory => &["events", "status"],
         AgentProfile::Competition => &["market", "events"],
+        AgentProfile::SpotVenue => &["binance-spot"],
         AgentProfile::Platform => &["events", "sec", "market"],
     }
 }
@@ -997,6 +1032,7 @@ fn profile_label(profile: AgentProfile) -> &'static str {
         AgentProfile::Financial => "financial",
         AgentProfile::Regulatory => "regulatory",
         AgentProfile::Competition => "competition",
+        AgentProfile::SpotVenue => "spot-venue",
         AgentProfile::Platform => "platform",
         AgentProfile::Risk => "risk",
         AgentProfile::Autoresearch => "autoresearch",

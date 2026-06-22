@@ -56,6 +56,27 @@ pub struct ExchangeUsdcBalanceHistoryPoint {
 }
 
 #[derive(Clone, Debug, Serialize)]
+pub struct BinanceSpotKline {
+    pub symbol: String,
+    pub interval: String,
+    pub open_time_ms: i64,
+    pub close_time_ms: i64,
+    pub open: f64,
+    pub high: f64,
+    pub low: f64,
+    pub close: f64,
+    pub volume: f64,
+    pub quote_volume: f64,
+    pub trade_count: i64,
+    pub taker_buy_base_volume: f64,
+    pub taker_buy_quote_volume: f64,
+    pub observed_at: String,
+    pub source: String,
+    pub source_url: String,
+    pub attributes: Value,
+}
+
+#[derive(Clone, Debug, Serialize)]
 pub struct Filing {
     pub company: String,
     pub cik: String,

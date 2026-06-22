@@ -26,6 +26,7 @@ USDC 是否增长？
 | 活跃度     | Transaction count / active addresses                      | 判断用户活跃               |
 | DeFi 用途  | Aave / Compound deposits and borrow                       | 判断资金是停泊还是借贷活跃 |
 | 交易所用途 | Exchange balances                                         | 判断是否偏交易场景         |
+| 场内现货   | Binance Spot CRCLB/USDCUSDT daily close / depth / volume  | 判断币安场内交易质量，只作辅助 |
 | 收益型竞争 | USDe / BUIDL / USDY / USYC AUM                            | 判断资金是否追收益流出     |
 | 渠道经济性 | Base USDC supply / Coinbase products average USDC         | 判断增长是否被渠道拿走利润 |
 | 银行竞争   | bank stablecoin / tokenized deposits events               | 判断企业结算心智是否被抢   |
@@ -80,6 +81,20 @@ competition score =
 
 USDC on Platform 是平台上 USDC 余额，白话就是 Circle 或合作平台上留存的 USDC。
 
+## Binance Spot 场内现货辅助信号
+
+Binance Spot 数据用于回答“币安场内是否有现货交易质量变化”，不是 CRCL 正股或 USDC 全市场事实锚。
+
+| 指标 | 用途 | 处理规则 |
+| ---- | ---- | -------- |
+| `P1_BINANCE_SPOT_CRCLB_HISTORY_DAYS` | CRCLB 完成日线样本长度 | `<30` 天必须做短样本分析：status、daily close、最新完成日成交额、实际窗口日均成交额、spread/depth；样本短不是采集失败，只是不写 30D/90D 长线趋势 |
+| `P1_BINANCE_SPOT_CRCLB_30D_QUOTE_VOLUME` | CRCLB 币安场内成交额 | 窗口少于 30 天时按实际可得窗口折算日均；日均 `<25万 USDT` 写流动性偏薄；不能替代 NYSE:CRCL 成交量 |
+| `P1_BINANCE_SPOT_CRCLB_30D_PRICE_CHANGE_PCT` | CRCLB 场内价格动量 | `>|20%|` 进入观察/复核；不得单独上调或下调基本面结论 |
+| `P1_BINANCE_SPOT_USDCUSDT_DAILY_CLOSE` | Binance USDC/USDT 场内价格质量 | 偏离 1.0 超 `30 bps` 进入观察；超 `100 bps` 触发交叉验证 |
+| `P1_BINANCE_SPOT_USDCUSDT_SPREAD_BPS` | Binance USDC/USDT 盘口质量 | `>5 bps` 检查是否与 USDC/USD、Curve 或交易所余额异常共振 |
+
+输出规则：场内现货信号只能改变“观察 / 需复核 / 降置信度”，不能单独输出“增强”或“降级”。CRCLB 少于 30 根完成日线时也必须分析场内交易质量，但结论写“观察（短样本）”，不得写成采集失败或 data-quality 阻断。若与 Circle 官方披露、USDC 全市场 peg、交易所余额或 NYSE:CRCL 成交量共振，再进入对应主框架复核。
+
 ## 每周结论分级
 
 | 级别 | 条件                              | 结论           |
@@ -103,6 +118,7 @@ Base USDC supply 与 Coinbase 相关变化：
 渠道议价矩阵结论：
 转账量与活跃地址：
 DeFi / 交易所 / 支付场景判断：
+Binance Spot 场内现货信号：
 收益型稳定币 / RWA AUM：
 稳定币竞争矩阵结论：
 银行稳定币 / tokenized deposits 事件：

@@ -171,6 +171,10 @@ const MONITOR_METRICS: &[&str] = &[
     "P1_EXCHANGE_USDC_BALANCES",
     "P1_EXCHANGE_USDC_BALANCE_24H_CHANGE",
     "P1_EXCHANGE_USDC_BALANCE_24H_CHANGE_PCT",
+    "P1_BINANCE_SPOT_CRCLB_LAST_PRICE",
+    "P1_BINANCE_SPOT_CRCLB_24H_QUOTE_VOLUME",
+    "P1_BINANCE_SPOT_USDCUSDT_LAST_PRICE",
+    "P1_BINANCE_SPOT_USDCUSDT_SPREAD_BPS",
     "P2_CIRCLE_RLDC_MARGIN",
     "P2_CIRCLE_OTHER_REVENUE_SHARE",
 ];
@@ -197,6 +201,14 @@ const WEEKLY_METRICS: &[&str] = &[
     "P1_EXCHANGE_USDC_BALANCE_30D_CHANGE",
     "P1_EXCHANGE_USDC_BALANCE_30D_CHANGE_PCT",
     "P1_EXCHANGE_USDC_TOP3_CONCENTRATION",
+    "P1_BINANCE_SPOT_CRCLB_DAILY_CLOSE",
+    "P1_BINANCE_SPOT_CRCLB_30D_QUOTE_VOLUME",
+    "P1_BINANCE_SPOT_CRCLB_30D_PRICE_CHANGE_PCT",
+    "P1_BINANCE_SPOT_CRCLB_HISTORY_DAYS",
+    "P1_BINANCE_SPOT_USDCUSDT_DAILY_CLOSE",
+    "P1_BINANCE_SPOT_USDCUSDT_30D_QUOTE_VOLUME",
+    "P1_BINANCE_SPOT_USDCUSDT_30D_PRICE_CHANGE_PCT",
+    "P1_BINANCE_SPOT_USDCUSDT_SPREAD_BPS",
     "P1_COMPETITOR_PYUSD_MARKET_CAP",
     "P1_COMPETITOR_FDUSD_MARKET_CAP",
     "P1_COMPETITOR_USDE_MARKET_CAP",
@@ -273,6 +285,14 @@ const VALUATION_METRICS: &[&str] = &[
     "P1_EXCHANGE_USDC_BALANCE_30D_CHANGE",
     "P1_EXCHANGE_USDC_BALANCE_30D_CHANGE_PCT",
     "P1_EXCHANGE_USDC_TOP3_CONCENTRATION",
+    "P1_BINANCE_SPOT_CRCLB_DAILY_CLOSE",
+    "P1_BINANCE_SPOT_CRCLB_30D_QUOTE_VOLUME",
+    "P1_BINANCE_SPOT_CRCLB_30D_PRICE_CHANGE_PCT",
+    "P1_BINANCE_SPOT_CRCLB_HISTORY_DAYS",
+    "P1_BINANCE_SPOT_USDCUSDT_DAILY_CLOSE",
+    "P1_BINANCE_SPOT_USDCUSDT_30D_QUOTE_VOLUME",
+    "P1_BINANCE_SPOT_USDCUSDT_30D_PRICE_CHANGE_PCT",
+    "P1_BINANCE_SPOT_USDCUSDT_SPREAD_BPS",
     "P1_COMPETITOR_USDE_MARKET_CAP",
     "P1_TOKENIZED_TREASURY_AUM",
     "P1_TOKENIZED_TREASURY_BUIDL_AUM",
@@ -307,6 +327,14 @@ const FRAMEWORK_METRICS: &[&str] = &[
     "P1_EXCHANGE_USDC_BALANCE_30D_CHANGE",
     "P1_EXCHANGE_USDC_BALANCE_90D_CHANGE_PCT",
     "P1_EXCHANGE_USDC_TOP3_CONCENTRATION",
+    "P1_BINANCE_SPOT_CRCLB_DAILY_CLOSE",
+    "P1_BINANCE_SPOT_CRCLB_30D_QUOTE_VOLUME",
+    "P1_BINANCE_SPOT_CRCLB_30D_PRICE_CHANGE_PCT",
+    "P1_BINANCE_SPOT_CRCLB_HISTORY_DAYS",
+    "P1_BINANCE_SPOT_USDCUSDT_DAILY_CLOSE",
+    "P1_BINANCE_SPOT_USDCUSDT_30D_QUOTE_VOLUME",
+    "P1_BINANCE_SPOT_USDCUSDT_30D_PRICE_CHANGE_PCT",
+    "P1_BINANCE_SPOT_USDCUSDT_SPREAD_BPS",
     "P1_CPN_ANNUALIZED_TPV",
     "P1_ARC_MAINNET_STATUS",
     "P1_ARC_PUBLIC_NETWORK_STATUS",
@@ -389,6 +417,7 @@ const WEEKLY_HARD_GATES: &[&str] = &[
     "Base 链增长不能单独上调结论；必须同时检查总 USDC 份额和 RLDC margin。",
     "USDC 份额连续 4 周下降、净赎回扩大或 competition score 跌破 40 时，进入降级复核。",
     "D3 和 D7 必须与最新 RLDC margin、Other revenue share 保持一致。",
+    "Binance Spot 的 CRCLB/USDCUSDT 只作为场内现货辅助信号；CRCLB 完成日线少于 30 根时仍要做短样本成交/盘口分析，但不得用于独立 30D/90D 长线趋势判断，也不得写成采集失败。",
 ];
 const QUARTERLY_HARD_GATES: &[&str] = &[
     "T+0 只填事实数字，不输出仓位动作；T+24h 才完成结论层。",
@@ -401,6 +430,7 @@ const VALUATION_HARD_GATES: &[&str] = &[
     "信用层 C-TRIGGER 任一触发时，仓位上限直接切到 0-10%，优先于 Bull/Base/Bear。",
     "筹码 P2 信号只调整仓位，不切换基本面情景，也不修改估值倍数。",
     "加仓必须在情景未降级且反证未触发的前提下执行。",
+    "Binance Spot 场内现货异常只能触发流动性/交易质量复核；不得单独修改 CRCL 估值倍数或仓位上限。",
 ];
 const FRAMEWORK_HARD_GATES: &[&str] = &[
     "collector warning、P0 missing_info 或来源阻断未解除时，autoresearch 只能输出 defer/revise，不能写 keep。",
@@ -425,6 +455,19 @@ const COLLECTOR_OUTPUT_CONTRACT: &[&str] = &[
     "列出 collector failure、凭证缺口、source unreachable、stale P0/P1 指标和人工补采建议。",
     "保存或传递同一批 evidence packet；后续 agent 必须使用 --no-collect 读取同一批数据。",
     "如用户要求只读/不联网，必须明确写 collector skipped，并只报告已有数据库状态。",
+];
+const SPOT_VENUE_DOCS: &[&str] = &[
+    "docs/sources.md",
+    "docs/metrics/02-weekly-review.md",
+    "docs/valuation/00-valuation-framework.md",
+    "docs/metrics/06-validation-matrix.md",
+    "work_docs/data-source-inventory.md",
+];
+const SPOT_VENUE_OUTPUT_CONTRACT: &[&str] = &[
+    "输出 CRCLB 的完成日线样本长度、近窗口日均 quote volume、30D/90D 可用性和场内动量判断。",
+    "输出 USDCUSDT 的 daily close 偏离、spread、盘口质量和是否需要跨源交叉验证。",
+    "明确写出 Binance Spot 只作为场内辅助信号，不替代 NYSE:CRCL、Circle 官方披露或全市场 USDC 数据。",
+    "结论只能影响观察、交易质量复核或 confidence；不得单独修改估值倍数、Bull/Base/Bear 或仓位上限。",
 ];
 
 const DAILY_SUBAGENTS: &[SubagentSpec] = &[
@@ -524,6 +567,13 @@ const MONITOR_SUBAGENTS: &[SubagentSpec] = &[
         ],
     },
     SubagentSpec {
+        profile: AgentProfile::SpotVenue,
+        title: "场内现货交易质量监控",
+        objective: "复核 Binance Spot CRCLB/USDCUSDT 的场内价格、成交额、盘口和样本长度是否触发观察。",
+        docs_to_read: SPOT_VENUE_DOCS,
+        output_contract: SPOT_VENUE_OUTPUT_CONTRACT,
+    },
+    SubagentSpec {
         profile: AgentProfile::Regulatory,
         title: "紧急事件巡检",
         objective: "检查监管、Circle 公告、核心链、Circle 状态页和市场锚定是否出现 P0/P1 事件。",
@@ -583,6 +633,13 @@ const WEEKLY_SUBAGENTS: &[SubagentSpec] = &[
             "区分 confirmed_fact、inference 和 missing_info。",
             "来源冲突时给出取用规则。",
         ],
+    },
+    SubagentSpec {
+        profile: AgentProfile::SpotVenue,
+        title: "场内现货辅助信号复核",
+        objective: "单独复核 Binance Spot CRCLB/USDCUSDT 的长线辅助信号，判断是否只影响观察或需要交叉验证。",
+        docs_to_read: SPOT_VENUE_DOCS,
+        output_contract: SPOT_VENUE_OUTPUT_CONTRACT,
     },
     SubagentSpec {
         profile: AgentProfile::Competition,
@@ -760,6 +817,13 @@ const VALUATION_SUBAGENTS: &[SubagentSpec] = &[
         ],
     },
     SubagentSpec {
+        profile: AgentProfile::SpotVenue,
+        title: "场内现货估值边界复核",
+        objective: "复核 Binance Spot 场内现货信号是否只影响流动性/交易质量和 confidence，不误入估值倍数或仓位动作。",
+        docs_to_read: SPOT_VENUE_DOCS,
+        output_contract: SPOT_VENUE_OUTPUT_CONTRACT,
+    },
+    SubagentSpec {
         profile: AgentProfile::Financial,
         title: "基础盘估值输入",
         objective: "给出 average USDC、reserve return rate、RLDC margin、Other revenue 的最新估值输入。",
@@ -862,6 +926,13 @@ const FRAMEWORK_SUBAGENTS: &[SubagentSpec] = &[
             "区分 confirmed_fact、inference 和 missing_info。",
             "说明是否足以支持框架修改。",
         ],
+    },
+    SubagentSpec {
+        profile: AgentProfile::SpotVenue,
+        title: "场内现货规则自检",
+        objective: "复核 Binance Spot 新增规则是否满足 keep/revise/defer/reject，防止场内辅助数据污染主事实锚。",
+        docs_to_read: SPOT_VENUE_DOCS,
+        output_contract: SPOT_VENUE_OUTPUT_CONTRACT,
     },
     SubagentSpec {
         profile: AgentProfile::Financial,
@@ -1428,6 +1499,7 @@ fn profile_label(profile: AgentProfile) -> &'static str {
         AgentProfile::Financial => "financial",
         AgentProfile::Regulatory => "regulatory",
         AgentProfile::Competition => "competition",
+        AgentProfile::SpotVenue => "spot-venue",
         AgentProfile::Platform => "platform",
         AgentProfile::Risk => "risk",
         AgentProfile::Autoresearch => "autoresearch",

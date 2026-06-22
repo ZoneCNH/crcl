@@ -76,6 +76,7 @@
 | USDC adjusted transfer value 交叉验证 | CoinMetrics Pro / Dune | CoinMetrics Pro；`https://dune.com` | 部分 | 主自动源已改用 Visa / Allium；CoinMetrics Community API 对 `TxTfrValAdjUSD` 需要付费凭证 |
 | USDC velocity | Circle SEC filing；Dune / CoinMetrics Pro 周度 adjusted 口径 | Circle SEC filings；`https://dune.com` | 部分 | filing-period velocity 已从 Circle filing 落库：`P1_USDC_VELOCITY`；周度 adjusted velocity 未自动化 |
 | Exchange USDC balances / changes / concentration / history | CoinGlass Exchange Balance List + frontend Balance endpoints | Open API：`https://open-api-v4.coinglass.com/api/exchange/balance/list?symbol=USDC`；前台 fallback：`https://capi.coinglass.com/api/exchange/chain/v3/balance/list?symbol=USDC`、`https://capi.coinglass.com/api/exchange/chain/v3/balance?symbol=USDC&exName=all&size=300&resolution=7` | 已落库 | `observations`：`P1_EXCHANGE_USDC_BALANCES`、24h/7d/30d change、30D/90D/365D change、largest/top3 concentration；明细表：`exchange_usdc_balances`、`exchange_usdc_balance_history`；Open API key 仅作优先交叉验证 |
+| Binance Spot long-term venue data | Binance Spot REST API | `https://api.binance.com/api/v3/exchangeInfo?symbol=CRCLBUSDT`、`https://api.binance.com/api/v3/ticker/24hr?symbol=CRCLBUSDT`、`https://api.binance.com/api/v3/depth?symbol=CRCLBUSDT&limit=100`、`https://api.binance.com/api/v3/klines?symbol=CRCLBUSDT&interval=1d&limit=120`；`USDCUSDT` 同口径 | 已落库 | `observations`：`P1_BINANCE_SPOT_CRCLB_*`、`P1_BINANCE_SPOT_USDCUSDT_*`；明细表：`binance_spot_klines`。采集命令：`cargo run --release -- collect --source binance-spot`。CRCLB 是 tokenized bStock，不能替代 NYSE:CRCL 正股；USDCUSDT 是币安场内交易对，不能替代全交易所 USDC balance |
 | Aave V3 USDC deposits | DefiLlama protocol API | `https://api.llama.fi/protocol/aave-v3` | 已落库 | `observations`：协议总额和链级拆分 |
 | Compound V3 USDC deposits | DefiLlama protocol API | `https://api.llama.fi/protocol/compound-v3` | 已落库 | `observations`：协议总额和链级拆分 |
 | Aave + Compound aggregate USDC deposits | DefiLlama protocol API | `https://api.llama.fi/protocol/aave-v3`；`https://api.llama.fi/protocol/compound-v3` | 已落库 | `observations`：`P1_DEFI_PROTOCOL_USDC_DEPOSITS` |
@@ -157,6 +158,7 @@
 | `institutional_ownership` | 7 | 21 | MarketBeat CRCL institutional ownership 聚合指标 |
 | `platform_metrics` | 6 | 13 | CPN TPV、Arc public/testnet metrics |
 | `technical_status` | 4 | 11 | Base / Solana / Circle / Ethereum status |
+| `binance_spot_market` / `binance_spot_liquidity` / `binance_spot_data_quality` | 3 类 | 28 | Binance Spot `CRCLBUSDT` / `USDCUSDT` 的状态、ticker、盘口、完整日线趋势；长线辅助，不覆盖主事实锚；日线专表 `binance_spot_klines` 当前 129 行 |
 
 ## 后续补齐优先级
 

@@ -63,6 +63,23 @@ CPN 和 Arc 是业务线索，但必须转化为可重复收入。
 | 利率折价 | 储备收益率下行且 USDC 不增长 | 下修收入         |
 | 竞争折价 | USDC 市占率连续下降          | 下修增长率       |
 | 筹码折价 | 解禁、增发、内部人减持       | 下修短期风险承受 |
+| 场内现货观察 | Binance Spot CRCLB/USDCUSDT 异常 | 只触发流动性/交易质量复核，不单独下修倍数 |
+
+## 场内现货辅助信号
+
+Binance Spot 的 `CRCLBUSDT` 和 `USDCUSDT` 是长线辅助数据，不是估值主锚。
+
+估值使用规则：
+
+| 信号 | 估值处理 |
+| ---- | -------- |
+| CRCLB 完成日线 `<30` 天 | 仍做短样本场内分析：status、daily close、最新完成日成交额、实际窗口日均成交额、spread/depth；不视为采集失败，不用于 30D/90D 长线判断 |
+| CRCLB 实际窗口日均 quote volume `<25万 USDT` | 记录币安场内流动性偏薄；窗口少于 30 天时按实际可得窗口折算，不替代 NYSE:CRCL 成交量 |
+| CRCLB 30D close change `>|20%|` | 进入场内动量观察；必须与 NYSE:CRCL、筹码或基本面信号共振才影响仓位 |
+| USDCUSDT daily close 偏离 1.0 超 `30 bps` | 触发 USDC 场内交易质量复核；必须与 CoinGecko/Circle/Curve 交叉验证 |
+| USDCUSDT spread `>5 bps` | 触发盘口质量复核；不能单独视为全市场脱锚 |
+
+除非这些信号与信用层 C-TRIGGER、USDC 全市场 peg、Circle 官方披露、NYSE:CRCL 成交量或监管 P0 共振，否则只影响 confidence 和 missing_info，不改变 Bull/Base/Bear 或估值倍数。样本少于 30 天时输出“观察（短样本）”，不能写成数据采集失败或 data-quality 阻断。
 
 ## Autoresearch 估值联动
 
@@ -127,6 +144,7 @@ EV 是 enterprise value，白话就是公司市值加净债务后的企业价值
 | 筹码 P2 信号（任一） | 减仓 | -5-10 ppts | 大股东减持>5%、做空>15%、解禁集中 |
 | competition score <40 | 减仓 | -10-15 ppts | 竞争结构恶化 |
 | 监管 P0 风险 | 减仓 | -20 ppts 至触发上限 | 收益分享或激励被限制 |
+| Binance Spot 场内异常 | 观察 | 0 ppts | 只触发流动性/交易质量复核，不单独调仓 |
 
 筹码 P2 信号只调仓位，不切换情景框架，不修改估值倍数。
 
@@ -351,6 +369,7 @@ Base case 安全边际 >40%：显著低估，结合仓位规则加仓
 倍数：___-___×（区间）
   中性倍数：___×
   倍数选用依据：
+  场内现货辅助信号（Binance Spot；是否仅影响 confidence）：
 
 目标市值：___-___亿美元
   中性目标：___亿美元

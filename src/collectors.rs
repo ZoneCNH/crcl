@@ -2,12 +2,13 @@ use crate::SourceSelector;
 use crate::db::Database;
 use crate::models::{Event, Filing, MissingItem, Observation, SourceRun};
 use crate::parsing::{
-    page_title, parse_arc_public_status, parse_circle_platform_metrics, parse_circle_pressroom,
-    parse_circle_sec_filing, parse_circle_transparency, parse_coinbase_sec_filing,
-    parse_coingecko_simple_price, parse_coinglass_exchange_balance_history_snapshot,
-    parse_coinglass_exchange_balance_snapshot, parse_coinmetrics_usdc_activity, parse_curve_3pool,
-    parse_defillama_protocol_usdc_deposits, parse_defillama_stablecoins,
-    parse_ethereum_latest_block, parse_finra_short_interest,
+    page_title, parse_arc_public_status, parse_binance_spot_daily_klines, parse_binance_spot_depth,
+    parse_binance_spot_exchange_info, parse_binance_spot_ticker_24hr,
+    parse_circle_platform_metrics, parse_circle_pressroom, parse_circle_sec_filing,
+    parse_circle_transparency, parse_coinbase_sec_filing, parse_coingecko_simple_price,
+    parse_coinglass_exchange_balance_history_snapshot, parse_coinglass_exchange_balance_snapshot,
+    parse_coinmetrics_usdc_activity, parse_curve_3pool, parse_defillama_protocol_usdc_deposits,
+    parse_defillama_stablecoins, parse_ethereum_latest_block, parse_finra_short_interest,
     parse_marketbeat_institutional_ownership, parse_nyfed_sofr, parse_rwa_treasuries,
     parse_sec_blackrock_nmfp3_filing, parse_sec_submissions, parse_statuspage,
     parse_treasury_yield_curve, parse_visa_allium_usdc_adjusted_transfer_volume, parse_yahoo_chart,
@@ -31,6 +32,8 @@ const COINGLASS_FRONTEND_BALANCE_BASE_URL: &str =
     "https://capi.coinglass.com/api/exchange/chain/v3/balance/list?symbol=USDC";
 const COINGLASS_FRONTEND_BALANCE_HISTORY_BASE_URL: &str = "https://capi.coinglass.com/api/exchange/chain/v3/balance?symbol=USDC&exName=all&size=300&resolution=7";
 const COINGLASS_FRONTEND_REFERER: &str = "https://www.coinglass.com/zh/Balance";
+const BINANCE_SPOT_DEPTH_LIMIT: usize = 100;
+const BINANCE_SPOT_KLINE_LIMIT: usize = 120;
 
 pub struct CollectorContext<'a> {
     pub db: &'a Database,
@@ -80,6 +83,12 @@ pub async fn run_collectors(
         jobs.push(CollectorJob::CirclePlatformMetrics);
         jobs.push(CollectorJob::ArcPublicStatus);
         jobs.push(CollectorJob::MarketBeatInstitutionalOwnership);
+    }
+    if matches!(
+        selector,
+        SourceSelector::All | SourceSelector::Market | SourceSelector::BinanceSpot
+    ) {
+        jobs.push(CollectorJob::BinanceSpotLongTerm);
     }
     if matches!(selector, SourceSelector::All | SourceSelector::Rates) {
         jobs.push(CollectorJob::Treasury);
@@ -140,6 +149,7 @@ fn source_selector_for_job(job: CollectorJob) -> SourceSelector {
         | CollectorJob::CirclePlatformMetrics
         | CollectorJob::ArcPublicStatus
         | CollectorJob::MarketBeatInstitutionalOwnership => SourceSelector::Market,
+        CollectorJob::BinanceSpotLongTerm => SourceSelector::BinanceSpot,
         CollectorJob::Treasury | CollectorJob::NyFed | CollectorJob::BlackRockNmfp => {
             SourceSelector::Rates
         }
@@ -157,6 +167,7 @@ pub fn source_selector_label(selector: SourceSelector) -> &'static str {
         SourceSelector::Sec => "sec",
         SourceSelector::Events => "events",
         SourceSelector::Status => "status",
+        SourceSelector::BinanceSpot => "binance-spot",
     }
 }
 
@@ -176,6 +187,7 @@ enum CollectorJob {
     CirclePlatformMetrics,
     ArcPublicStatus,
     MarketBeatInstitutionalOwnership,
+    BinanceSpotLongTerm,
     Treasury,
     NyFed,
     BlackRockNmfp,
@@ -207,6 +219,7 @@ async fn run_job(ctx: &CollectorContext<'_>, job: CollectorJob) -> Result<()> {
         CollectorJob::MarketBeatInstitutionalOwnership => {
             collect_marketbeat_institutional_ownership(ctx).await
         }
+        CollectorJob::BinanceSpotLongTerm => collect_binance_spot_long_term(ctx).await,
         CollectorJob::Treasury => collect_treasury(ctx).await,
         CollectorJob::NyFed => collect_nyfed(ctx).await,
         CollectorJob::BlackRockNmfp => collect_blackrock_nmfp(ctx).await,
@@ -390,6 +403,20 @@ fn job_failure_gaps(
             "P2",
             "https://www.marketbeat.com/stocks/NYSE/CRCL/institutional-ownership/",
         )],
+        CollectorJob::BinanceSpotLongTerm => vec![
+            (
+                "P1_BINANCE_SPOT_CRCLB_LAST_PRICE",
+                "CRCLB Binance spot last price",
+                "P1",
+                "https://api.binance.com/api/v3/ticker/24hr?symbol=CRCLBUSDT",
+            ),
+            (
+                "P1_BINANCE_SPOT_USDCUSDT_LAST_PRICE",
+                "USDC/USDT Binance spot last price",
+                "P1",
+                "https://api.binance.com/api/v3/ticker/24hr?symbol=USDCUSDT",
+            ),
+        ],
         CollectorJob::Treasury => vec![
             (
                 "P0_TREASURY_3M_YIELD",
@@ -880,6 +907,102 @@ async fn collect_marketbeat_institutional_ownership(ctx: &CollectorContext<'_>) 
             .delete_missing_metric("P2_CRCL_INSTITUTIONAL_OWNERSHIP")?;
     }
     insert_observations(ctx.db, fetched.run_id, &observations)?;
+    Ok(())
+}
+
+async fn collect_binance_spot_long_term(ctx: &CollectorContext<'_>) -> Result<()> {
+    let targets = [
+        (
+            "CRCLBUSDT",
+            "P1_BINANCE_SPOT_CRCLB",
+            "CRCLB tokenized bStock",
+        ),
+        ("USDCUSDT", "P1_BINANCE_SPOT_USDCUSDT", "USDC/USDT"),
+    ];
+
+    for (symbol, metric_prefix, asset_label) in targets {
+        collect_binance_spot_symbol(ctx, symbol, metric_prefix, asset_label).await?;
+    }
+
+    ctx.db
+        .delete_missing_metric("P1_BINANCE_SPOT_CRCLB_LAST_PRICE")?;
+    ctx.db
+        .delete_missing_metric("P1_BINANCE_SPOT_USDCUSDT_LAST_PRICE")?;
+    Ok(())
+}
+
+async fn collect_binance_spot_symbol(
+    ctx: &CollectorContext<'_>,
+    symbol: &str,
+    metric_prefix: &str,
+    asset_label: &str,
+) -> Result<()> {
+    let exchange_info_url = format!("https://api.binance.com/api/v3/exchangeInfo?symbol={symbol}");
+    let fetched = fetch_text(
+        ctx,
+        &format!("Binance Spot exchangeInfo: {symbol}"),
+        &exchange_info_url,
+    )
+    .await?;
+    let observations = parse_binance_spot_exchange_info(
+        &fetched.text,
+        &exchange_info_url,
+        symbol,
+        metric_prefix,
+        asset_label,
+    )?;
+    insert_observations(ctx.db, fetched.run_id, &observations)?;
+
+    let ticker_url = format!("https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}");
+    let fetched = fetch_text(
+        ctx,
+        &format!("Binance Spot 24hr ticker: {symbol}"),
+        &ticker_url,
+    )
+    .await?;
+    let observations =
+        parse_binance_spot_ticker_24hr(&fetched.text, &ticker_url, metric_prefix, asset_label)?;
+    insert_observations(ctx.db, fetched.run_id, &observations)?;
+
+    let depth_url = format!(
+        "https://api.binance.com/api/v3/depth?symbol={symbol}&limit={BINANCE_SPOT_DEPTH_LIMIT}"
+    );
+    let fetched = fetch_text(
+        ctx,
+        &format!("Binance Spot order book: {symbol}"),
+        &depth_url,
+    )
+    .await?;
+    let observations = parse_binance_spot_depth(
+        &fetched.text,
+        &depth_url,
+        metric_prefix,
+        asset_label,
+        BINANCE_SPOT_DEPTH_LIMIT,
+    )?;
+    insert_observations(ctx.db, fetched.run_id, &observations)?;
+
+    let klines_url = format!(
+        "https://api.binance.com/api/v3/klines?symbol={symbol}&interval=1d&limit={BINANCE_SPOT_KLINE_LIMIT}"
+    );
+    let fetched = fetch_text(
+        ctx,
+        &format!("Binance Spot daily klines: {symbol}"),
+        &klines_url,
+    )
+    .await?;
+    let snapshot = parse_binance_spot_daily_klines(
+        &fetched.text,
+        &klines_url,
+        symbol,
+        metric_prefix,
+        asset_label,
+    )?;
+    insert_observations(ctx.db, fetched.run_id, &snapshot.observations)?;
+    for row in &snapshot.klines {
+        ctx.db.upsert_binance_spot_kline(fetched.run_id, row)?;
+    }
+
     Ok(())
 }
 

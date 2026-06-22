@@ -25,6 +25,7 @@ Codex 会按 `name` 字段识别 agent。推荐让用户直接输入任务，由
 | `crcl-financial-valuation` | 财报、RLDC、Other revenue、估值锚和仓位因子 | 财务桥、情景影响、估值动作 |
 | `crcl-regulatory-watch` | GENIUS Act、OCC、Treasury、FDIC、SEC/CFTC 监管事件 | P0/P1/P2 监管判断、影响层级、动作 |
 | `crcl-competition-score` | 稳定币竞争、Coinbase/Base、USDT、RWA、银行稳定币 | D1-D7 打分、competition score、升级规则 |
+| `crcl-spot-venue-watch` | Binance Spot CRCLB/USDCUSDT 场内现货辅助信号 | 短样本场内分析、实际窗口成交额、盘口质量、交叉验证要求 |
 | `crcl-platform-option` | CPN、Arc、Other revenue 和平台化验证 | 弱/中/强验证、missing_info、估值切换条件 |
 | `crcl-risk-decision` | 多矩阵冲突、风险优先级、最终动作收口 | 增强/降级/观察、风险、下次触发 |
 | `crcl-autoresearch-curator` | 新假设、阈值、模板或来源的迭代治理 | keep/revise/defer/reject 与写入建议 |
@@ -71,6 +72,7 @@ JSON 输出包含本轮 `collector_run.batch_id`、按角色过滤后的 `recent
 | `crcl-financial-valuation` | `financial` | `sec`、`rates`、`market` |
 | `crcl-regulatory-watch` | `regulatory` | `events`、`status` |
 | `crcl-competition-score` | `competition` | `market`、`events` |
+| `crcl-spot-venue-watch` | `spot-venue` | `binance-spot` |
 | `crcl-platform-option` | `platform` | `events`、`sec`、`market` |
 | `crcl-risk-decision` | `risk` | `all` |
 | `crcl-autoresearch-curator` | `autoresearch` | `all` |

@@ -30,11 +30,11 @@
 ## Agent 选择
 
 - 日监：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-regulatory-watch`、`crcl-risk-decision`
-- 监控：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-regulatory-watch`、`crcl-monitor-guard`
-- 周报：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-competition-score`、`crcl-financial-valuation`、`crcl-regulatory-watch`、`crcl-platform-option`、`crcl-risk-decision`
+- 监控：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-spot-venue-watch`、`crcl-regulatory-watch`、`crcl-monitor-guard`
+- 周报：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-spot-venue-watch`、`crcl-competition-score`、`crcl-financial-valuation`、`crcl-regulatory-watch`、`crcl-platform-option`、`crcl-risk-decision`
 - 财报复核：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-financial-valuation`、`crcl-platform-option`、`crcl-competition-score`、`crcl-risk-decision`
-- 估值/仓位：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-financial-valuation`、`crcl-competition-score`、`crcl-regulatory-watch`、`crcl-platform-option`、`crcl-risk-decision`
-- 框架自检：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-financial-valuation`、`crcl-regulatory-watch`、`crcl-competition-score`、`crcl-platform-option`、`crcl-autoresearch-curator`、`crcl-risk-decision`
+- 估值/仓位：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-spot-venue-watch`、`crcl-financial-valuation`、`crcl-competition-score`、`crcl-regulatory-watch`、`crcl-platform-option`、`crcl-risk-decision`
+- 框架自检：`crcl-data-collector`、`crcl-data-quality-auditor`、`crcl-source-verifier`、`crcl-spot-venue-watch`、`crcl-financial-valuation`、`crcl-regulatory-watch`、`crcl-competition-score`、`crcl-platform-option`、`crcl-autoresearch-curator`、`crcl-risk-decision`
 - 完整跑批后总分析：`crcl-total-analysis`；它读取最新 monitoring、daily-monitor、weekly-review、valuation-decision、quarterly-earnings、framework-review 产物和本地 SQLite，不重新刷新外部数据，统一收口成总报告
 
 ## 命令判断

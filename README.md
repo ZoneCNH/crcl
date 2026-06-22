@@ -27,7 +27,7 @@ cargo run --release -- cron install
   quarterly  2/5/8/11 月 15 日 10:00 运行
   framework  每周六 10:30 运行
   full-analysis 每周六 11:15 运行，并且 cron run all 会在六个任务后自动生成
-  
+
 # 取消
 • 在仓库根目录执行：
 
@@ -76,6 +76,14 @@ cargo run --release -- cron install
 
 Rust 程序只做工具层：采集数据、落库、整理证据包和生成 sub agent 调度合同。
 评分、财报判断、估值和仓位动作由 sub agent / 总控 agent 按 `docs/playbook/`、`docs/metrics/` 与 `docs/valuation/` 执行。
+
+只采集币安现货长线辅助数据：
+
+```bash
+cargo run --release -- collect --source binance-spot
+```
+
+该入口只拉 Binance Spot 的 `CRCLBUSDT`（CRCLB tokenized bStock）和 `USDCUSDT`，保存 `exchangeInfo`、24h ticker、top100 order book snapshot、完整 1d K 线。日线写入 `binance_spot_klines`，汇总指标写入 `observations`。这些指标只作为币安场内辅助观察，不替代 NYSE:CRCL 正股行情、Circle 官方披露或全交易所 USDC balance。
 
 `agent-run` 是 Codex 可自动选择的本地执行层，会调用 Rust 证据包，再由 Rust 规则化总控合成可保存的结论：
 

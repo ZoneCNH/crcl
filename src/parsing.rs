@@ -8,7 +8,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::models::{
-    Event, ExchangeUsdcBalance, ExchangeUsdcBalanceHistoryPoint, Filing, Observation,
+    BinanceSpotKline, Event, ExchangeUsdcBalance, ExchangeUsdcBalanceHistoryPoint, Filing,
+    Observation,
 };
 
 macro_rules! obs {
@@ -605,6 +606,10 @@ fn date_part(value: &str) -> String {
     value.split('T').next().unwrap_or(value).to_string()
 }
 
+fn timestamp_millis_date(value: i64) -> Option<String> {
+    chrono::DateTime::from_timestamp(value / 1000, 0).map(|dt| dt.date_naive().to_string())
+}
+
 fn percent_change(current: f64, previous: f64) -> f64 {
     if previous == 0.0 {
         0.0
@@ -619,6 +624,50 @@ fn metric_suffix(input: &str) -> String {
         .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' })
         .collect::<String>()
         .to_ascii_uppercase()
+}
+
+fn parse_number(text: &str, field: &str) -> Result<f64> {
+    text.replace(',', "")
+        .parse::<f64>()
+        .with_context(|| format!("{field} is not a number: {text}"))
+}
+
+fn parse_book_level(level: &[String]) -> Result<(f64, f64)> {
+    let price = level
+        .first()
+        .context("book level price missing")
+        .and_then(|value| parse_number(value, "book price"))?;
+    let quantity = level
+        .get(1)
+        .context("book level quantity missing")
+        .and_then(|value| parse_number(value, "book quantity"))?;
+    Ok((price, quantity))
+}
+
+fn quote_depth(levels: &[Vec<String>]) -> Result<f64> {
+    levels
+        .iter()
+        .map(|level| {
+            let (price, quantity) = parse_book_level(level)?;
+            Ok(price * quantity)
+        })
+        .sum()
+}
+
+fn row_i64(row: &[Value], idx: usize, field: &str) -> Result<i64> {
+    row.get(idx)
+        .and_then(|value| {
+            value
+                .as_i64()
+                .or_else(|| value.as_str()?.parse::<i64>().ok())
+        })
+        .with_context(|| format!("Binance kline {field} missing or invalid at index {idx}"))
+}
+
+fn row_f64(row: &[Value], idx: usize, field: &str) -> Result<f64> {
+    row.get(idx)
+        .and_then(value_as_f64)
+        .with_context(|| format!("Binance kline {field} missing or invalid at index {idx}"))
 }
 
 #[derive(Debug, Deserialize)]
@@ -714,6 +763,496 @@ pub fn parse_coingecko_simple_price(
     }
 
     Ok(out)
+}
+
+#[derive(Debug, Deserialize)]
+struct BinanceExchangeInfoResponse {
+    #[serde(rename = "serverTime")]
+    server_time: Option<i64>,
+    #[serde(default)]
+    symbols: Vec<BinanceSymbolInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BinanceSymbolInfo {
+    symbol: String,
+    status: String,
+    #[serde(rename = "baseAsset")]
+    base_asset: String,
+    #[serde(rename = "quoteAsset")]
+    quote_asset: String,
+    #[serde(rename = "isSpotTradingAllowed")]
+    is_spot_trading_allowed: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BinanceTicker24hr {
+    symbol: String,
+    #[serde(rename = "priceChange")]
+    price_change: String,
+    #[serde(rename = "priceChangePercent")]
+    price_change_percent: String,
+    #[serde(rename = "weightedAvgPrice")]
+    weighted_avg_price: String,
+    #[serde(rename = "lastPrice")]
+    last_price: String,
+    #[serde(rename = "highPrice")]
+    high_price: String,
+    #[serde(rename = "lowPrice")]
+    low_price: String,
+    volume: String,
+    #[serde(rename = "quoteVolume")]
+    quote_volume: String,
+    #[serde(rename = "openTime")]
+    open_time: i64,
+    #[serde(rename = "closeTime")]
+    close_time: i64,
+    count: i64,
+}
+
+#[derive(Debug, Deserialize)]
+struct BinanceDepth {
+    #[serde(rename = "lastUpdateId")]
+    last_update_id: i64,
+    bids: Vec<Vec<String>>,
+    asks: Vec<Vec<String>>,
+}
+
+pub struct BinanceSpotKlineSnapshot {
+    pub observations: Vec<Observation>,
+    pub klines: Vec<BinanceSpotKline>,
+}
+
+pub fn parse_binance_spot_exchange_info(
+    text: &str,
+    source_url: &str,
+    symbol: &str,
+    metric_prefix: &str,
+    asset_label: &str,
+) -> Result<Vec<Observation>> {
+    let response: BinanceExchangeInfoResponse = serde_json::from_str(text)?;
+    let info = response
+        .symbols
+        .iter()
+        .find(|info| info.symbol == symbol)
+        .context("Binance spot symbol missing from exchangeInfo")?;
+    let observed_at = response
+        .server_time
+        .and_then(timestamp_millis_date)
+        .unwrap_or_else(|| Utc::now().date_naive().to_string());
+
+    Ok(vec![obs!(
+        &format!("{metric_prefix}_STATUS"),
+        &format!("{asset_label} Binance spot trading status"),
+        "P1",
+        "binance_spot_market",
+        None,
+        Some(info.status.clone()),
+        "status",
+        &observed_at,
+        "Binance Spot exchangeInfo",
+        source_url,
+        json!({
+            "symbol": info.symbol,
+            "base_asset": info.base_asset,
+            "quote_asset": info.quote_asset,
+            "is_spot_trading_allowed": info.is_spot_trading_allowed,
+            "server_time_ms": response.server_time,
+            "method": "GET /api/v3/exchangeInfo?symbol=...",
+        }),
+    )])
+}
+
+pub fn parse_binance_spot_ticker_24hr(
+    text: &str,
+    source_url: &str,
+    metric_prefix: &str,
+    asset_label: &str,
+) -> Result<Vec<Observation>> {
+    let ticker: BinanceTicker24hr = serde_json::from_str(text)?;
+    let observed_at = timestamp_millis_date(ticker.close_time)
+        .unwrap_or_else(|| Utc::now().date_naive().to_string());
+    let last_price = parse_number(&ticker.last_price, "lastPrice")?;
+    let price_change = parse_number(&ticker.price_change, "priceChange")?;
+    let price_change_percent = parse_number(&ticker.price_change_percent, "priceChangePercent")?;
+    let weighted_avg_price = parse_number(&ticker.weighted_avg_price, "weightedAvgPrice")?;
+    let high_price = parse_number(&ticker.high_price, "highPrice")?;
+    let low_price = parse_number(&ticker.low_price, "lowPrice")?;
+    let volume = parse_number(&ticker.volume, "volume")?;
+    let quote_volume = parse_number(&ticker.quote_volume, "quoteVolume")?;
+    let base_attributes = json!({
+        "symbol": ticker.symbol,
+        "open_time_ms": ticker.open_time,
+        "close_time_ms": ticker.close_time,
+        "weighted_avg_price": weighted_avg_price,
+        "high_price": high_price,
+        "low_price": low_price,
+        "base_volume": volume,
+        "price_change": price_change,
+        "price_change_percent": price_change_percent,
+        "trade_count": ticker.count,
+        "method": "GET /api/v3/ticker/24hr?symbol=...",
+        "note": "rolling 24h Binance spot venue data; not NYSE consolidated equity volume",
+    });
+
+    Ok(vec![
+        obs!(
+            &format!("{metric_prefix}_LAST_PRICE"),
+            &format!("{asset_label} Binance spot last price"),
+            "P1",
+            "binance_spot_market",
+            Some(last_price),
+            None,
+            "USDT",
+            &observed_at,
+            "Binance Spot 24hr ticker",
+            source_url,
+            base_attributes.clone(),
+        ),
+        obs!(
+            &format!("{metric_prefix}_24H_QUOTE_VOLUME"),
+            &format!("{asset_label} Binance spot 24h quote volume"),
+            "P1",
+            "binance_spot_liquidity",
+            Some(quote_volume),
+            None,
+            "USDT",
+            &observed_at,
+            "Binance Spot 24hr ticker",
+            source_url,
+            base_attributes.clone(),
+        ),
+        obs!(
+            &format!("{metric_prefix}_24H_PRICE_CHANGE_PCT"),
+            &format!("{asset_label} Binance spot 24h price change"),
+            "P1",
+            "binance_spot_market",
+            Some(price_change_percent),
+            None,
+            "percent",
+            &observed_at,
+            "Binance Spot 24hr ticker",
+            source_url,
+            base_attributes.clone(),
+        ),
+        obs!(
+            &format!("{metric_prefix}_24H_TRADE_COUNT"),
+            &format!("{asset_label} Binance spot 24h trade count"),
+            "P1",
+            "binance_spot_liquidity",
+            Some(ticker.count as f64),
+            None,
+            "trades",
+            &observed_at,
+            "Binance Spot 24hr ticker",
+            source_url,
+            base_attributes,
+        ),
+    ])
+}
+
+pub fn parse_binance_spot_depth(
+    text: &str,
+    source_url: &str,
+    metric_prefix: &str,
+    asset_label: &str,
+    limit: usize,
+) -> Result<Vec<Observation>> {
+    let depth: BinanceDepth = serde_json::from_str(text)?;
+    let observed_at = Utc::now().date_naive().to_string();
+    let (best_bid, _) = parse_book_level(
+        depth
+            .bids
+            .first()
+            .context("Binance spot depth has no bid levels")?,
+    )?;
+    let (best_ask, _) = parse_book_level(
+        depth
+            .asks
+            .first()
+            .context("Binance spot depth has no ask levels")?,
+    )?;
+    let spread_bps = if best_bid > 0.0 {
+        (best_ask - best_bid) / best_bid * 10_000.0
+    } else {
+        0.0
+    };
+    let bid_quote_depth = quote_depth(&depth.bids)?;
+    let ask_quote_depth = quote_depth(&depth.asks)?;
+    let imbalance_pct = if bid_quote_depth + ask_quote_depth == 0.0 {
+        0.0
+    } else {
+        (bid_quote_depth - ask_quote_depth) / (bid_quote_depth + ask_quote_depth) * 100.0
+    };
+    let base_attributes = json!({
+        "last_update_id": depth.last_update_id,
+        "requested_limit": limit,
+        "bid_levels_returned": depth.bids.len(),
+        "ask_levels_returned": depth.asks.len(),
+        "best_bid": best_bid,
+        "best_ask": best_ask,
+        "top_book_bid_quote_depth": bid_quote_depth,
+        "top_book_ask_quote_depth": ask_quote_depth,
+        "method": "GET /api/v3/depth?symbol=...&limit=...",
+        "note": "snapshot only; use for venue liquidity context, not long-term flow by itself",
+    });
+
+    Ok(vec![
+        obs!(
+            &format!("{metric_prefix}_SPREAD_BPS"),
+            &format!("{asset_label} Binance spot best bid/ask spread"),
+            "P1",
+            "binance_spot_liquidity",
+            Some(spread_bps),
+            None,
+            "basis_points",
+            &observed_at,
+            "Binance Spot order book",
+            source_url,
+            base_attributes.clone(),
+        ),
+        obs!(
+            &format!("{metric_prefix}_TOP_BOOK_BID_DEPTH"),
+            &format!("{asset_label} Binance spot top-book bid depth"),
+            "P1",
+            "binance_spot_liquidity",
+            Some(bid_quote_depth),
+            None,
+            "USDT",
+            &observed_at,
+            "Binance Spot order book",
+            source_url,
+            base_attributes.clone(),
+        ),
+        obs!(
+            &format!("{metric_prefix}_TOP_BOOK_ASK_DEPTH"),
+            &format!("{asset_label} Binance spot top-book ask depth"),
+            "P1",
+            "binance_spot_liquidity",
+            Some(ask_quote_depth),
+            None,
+            "USDT",
+            &observed_at,
+            "Binance Spot order book",
+            source_url,
+            base_attributes.clone(),
+        ),
+        obs!(
+            &format!("{metric_prefix}_TOP_BOOK_IMBALANCE_PCT"),
+            &format!("{asset_label} Binance spot top-book imbalance"),
+            "P1",
+            "binance_spot_liquidity",
+            Some(imbalance_pct),
+            None,
+            "percent",
+            &observed_at,
+            "Binance Spot order book",
+            source_url,
+            base_attributes,
+        ),
+    ])
+}
+
+pub fn parse_binance_spot_daily_klines(
+    text: &str,
+    source_url: &str,
+    symbol: &str,
+    metric_prefix: &str,
+    asset_label: &str,
+) -> Result<BinanceSpotKlineSnapshot> {
+    let payload: Vec<Vec<Value>> = serde_json::from_str(text)?;
+    let now_ms = Utc::now().timestamp_millis();
+    let mut klines = Vec::new();
+    for row in payload {
+        if row.len() < 11 {
+            continue;
+        }
+        let open_time_ms = row_i64(&row, 0, "open time")?;
+        let close_time_ms = row_i64(&row, 6, "close time")?;
+        if close_time_ms > now_ms {
+            continue;
+        }
+        let observed_at = timestamp_millis_date(open_time_ms)
+            .context("Binance spot kline open time could not be converted to date")?;
+        klines.push(BinanceSpotKline {
+            symbol: symbol.to_string(),
+            interval: "1d".to_string(),
+            open_time_ms,
+            close_time_ms,
+            open: row_f64(&row, 1, "open")?,
+            high: row_f64(&row, 2, "high")?,
+            low: row_f64(&row, 3, "low")?,
+            close: row_f64(&row, 4, "close")?,
+            volume: row_f64(&row, 5, "volume")?,
+            quote_volume: row_f64(&row, 7, "quote asset volume")?,
+            trade_count: row_i64(&row, 8, "number of trades")?,
+            taker_buy_base_volume: row_f64(&row, 9, "taker buy base volume")?,
+            taker_buy_quote_volume: row_f64(&row, 10, "taker buy quote volume")?,
+            observed_at,
+            source: "Binance Spot daily klines".to_string(),
+            source_url: source_url.to_string(),
+            attributes: json!({
+                "symbol": symbol,
+                "interval": "1d",
+                "completed_candle": true,
+                "method": "GET /api/v3/klines?symbol=...&interval=1d&limit=...",
+                "note": "deduped into binance_spot_klines by symbol, interval, open_time_ms",
+            }),
+        });
+    }
+    if klines.is_empty() {
+        return Err(anyhow!(
+            "Binance spot daily kline payload has no completed rows"
+        ));
+    }
+
+    let latest = klines
+        .last()
+        .context("Binance spot daily kline latest row missing")?;
+    let observed_at = latest.observed_at.clone();
+    let history_days = klines.len() as f64;
+    let quote_volume_30d: f64 = klines
+        .iter()
+        .rev()
+        .take(30)
+        .map(|row| row.quote_volume)
+        .sum();
+    let mut observations = vec![
+        obs!(
+            &format!("{metric_prefix}_DAILY_CLOSE"),
+            &format!("{asset_label} Binance spot latest completed daily close"),
+            "P1",
+            "binance_spot_market",
+            Some(latest.close),
+            None,
+            "USDT",
+            &observed_at,
+            "Binance Spot daily klines",
+            source_url,
+            json!({
+                "symbol": symbol,
+                "interval": "1d",
+                "open_time_ms": latest.open_time_ms,
+                "close_time_ms": latest.close_time_ms,
+                "completed_candle": true,
+            }),
+        ),
+        obs!(
+            &format!("{metric_prefix}_DAILY_QUOTE_VOLUME"),
+            &format!("{asset_label} Binance spot latest completed daily quote volume"),
+            "P1",
+            "binance_spot_liquidity",
+            Some(latest.quote_volume),
+            None,
+            "USDT",
+            &observed_at,
+            "Binance Spot daily klines",
+            source_url,
+            json!({
+                "symbol": symbol,
+                "interval": "1d",
+                "open_time_ms": latest.open_time_ms,
+                "close_time_ms": latest.close_time_ms,
+                "completed_candle": true,
+            }),
+        ),
+        obs!(
+            &format!("{metric_prefix}_30D_QUOTE_VOLUME"),
+            &format!("{asset_label} Binance spot 30D completed daily quote volume"),
+            "P1",
+            "binance_spot_liquidity",
+            Some(quote_volume_30d),
+            None,
+            "USDT",
+            &observed_at,
+            "Binance Spot daily klines",
+            source_url,
+            json!({
+                "symbol": symbol,
+                "interval": "1d",
+                "window_completed_days": klines.len().min(30),
+                "method": "sum quote asset volume over latest completed daily klines",
+            }),
+        ),
+        obs!(
+            &format!("{metric_prefix}_HISTORY_DAYS"),
+            &format!("{asset_label} Binance spot completed daily history rows"),
+            "P1",
+            "binance_spot_data_quality",
+            Some(history_days),
+            None,
+            "days",
+            &observed_at,
+            "Binance Spot daily klines",
+            source_url,
+            json!({
+                "symbol": symbol,
+                "interval": "1d",
+                "first_observed_at": klines.first().map(|row| row.observed_at.clone()),
+                "latest_observed_at": latest.observed_at,
+                "requested_limit": 120,
+                "completed_rows": klines.len(),
+            }),
+        ),
+    ];
+
+    push_window_price_change(
+        &mut observations,
+        &klines,
+        30,
+        metric_prefix,
+        asset_label,
+        source_url,
+    );
+    push_window_price_change(
+        &mut observations,
+        &klines,
+        90,
+        metric_prefix,
+        asset_label,
+        source_url,
+    );
+
+    Ok(BinanceSpotKlineSnapshot {
+        observations,
+        klines,
+    })
+}
+
+fn push_window_price_change(
+    observations: &mut Vec<Observation>,
+    klines: &[BinanceSpotKline],
+    days: usize,
+    metric_prefix: &str,
+    asset_label: &str,
+    source_url: &str,
+) {
+    if klines.len() <= days {
+        return;
+    }
+    let latest = klines.last().expect("checked non-empty klines");
+    let previous = &klines[klines.len() - days - 1];
+    observations.push(obs!(
+        &format!("{metric_prefix}_{days}D_PRICE_CHANGE_PCT"),
+        &format!("{asset_label} Binance spot {days}D daily close change"),
+        "P1",
+        "binance_spot_market",
+        Some(percent_change(latest.close, previous.close)),
+        None,
+        "percent",
+        &latest.observed_at,
+        "Binance Spot daily klines",
+        source_url,
+        json!({
+            "symbol": latest.symbol,
+            "interval": "1d",
+            "window_completed_days": days,
+            "latest_date": latest.observed_at,
+            "previous_date": previous.observed_at,
+            "latest_close": latest.close,
+            "previous_close": previous.close,
+        }),
+    ));
 }
 
 pub fn parse_treasury_yield_curve(text: &str, source_url: &str) -> Result<Vec<Observation>> {
@@ -3793,6 +4332,89 @@ mod tests {
         assert!(observations.iter().any(|obs| {
             obs.metric_code == "P1_DEFI_AAVE_V3_USDC_DEPOSITS_ETHEREUM"
                 && obs.value_num == Some(105.0)
+        }));
+    }
+
+    #[test]
+    fn parses_binance_spot_status_ticker_depth_and_daily_klines() {
+        let exchange_info = r#"{
+          "serverTime": 1717286400000,
+          "symbols": [
+            {"symbol":"CRCLBUSDT","status":"TRADING","baseAsset":"CRCLB","quoteAsset":"USDT","isSpotTradingAllowed":true}
+          ]
+        }"#;
+        let status = parse_binance_spot_exchange_info(
+            exchange_info,
+            "https://example.test/exchangeInfo",
+            "CRCLBUSDT",
+            "P1_BINANCE_SPOT_CRCLB",
+            "CRCLB tokenized bStock",
+        )
+        .unwrap();
+        assert_eq!(status[0].metric_code, "P1_BINANCE_SPOT_CRCLB_STATUS");
+        assert_eq!(status[0].value_text.as_deref(), Some("TRADING"));
+
+        let ticker = r#"{
+          "symbol":"CRCLBUSDT",
+          "priceChange":"1.14",
+          "priceChangePercent":"1.418",
+          "weightedAvgPrice":"80.93",
+          "lastPrice":"81.54",
+          "highPrice":"82.38",
+          "lowPrice":"79.88",
+          "volume":"6128.64",
+          "quoteVolume":"496006.3398",
+          "openTime":1717200000000,
+          "closeTime":1717286400000,
+          "count":1961
+        }"#;
+        let ticker_obs = parse_binance_spot_ticker_24hr(
+            ticker,
+            "https://example.test/ticker",
+            "P1_BINANCE_SPOT_CRCLB",
+            "CRCLB tokenized bStock",
+        )
+        .unwrap();
+        assert!(ticker_obs.iter().any(|obs| {
+            obs.metric_code == "P1_BINANCE_SPOT_CRCLB_LAST_PRICE" && obs.value_num == Some(81.54)
+        }));
+
+        let depth = r#"{
+          "lastUpdateId": 42,
+          "bids": [["81.50","5"],["81.49","10"]],
+          "asks": [["81.58","4"],["81.60","8"]]
+        }"#;
+        let depth_obs = parse_binance_spot_depth(
+            depth,
+            "https://example.test/depth",
+            "P1_BINANCE_SPOT_CRCLB",
+            "CRCLB tokenized bStock",
+            100,
+        )
+        .unwrap();
+        assert!(depth_obs.iter().any(|obs| {
+            obs.metric_code == "P1_BINANCE_SPOT_CRCLB_SPREAD_BPS" && obs.value_num.unwrap() > 0.0
+        }));
+
+        let klines = r#"[
+          [1717200000000,"80.0","82.0","79.0","81.0","100.0",1717286399999,"8100.0",50,"60.0","4860.0","0"],
+          [1717286400000,"81.0","83.0","80.0","82.0","120.0",1717372799999,"9840.0",55,"70.0","5740.0","0"]
+        ]"#;
+        let snapshot = parse_binance_spot_daily_klines(
+            klines,
+            "https://example.test/klines",
+            "CRCLBUSDT",
+            "P1_BINANCE_SPOT_CRCLB",
+            "CRCLB tokenized bStock",
+        )
+        .unwrap();
+        assert_eq!(snapshot.klines.len(), 2);
+        assert!(snapshot.observations.iter().any(|obs| {
+            obs.metric_code == "P1_BINANCE_SPOT_CRCLB_DAILY_CLOSE" && obs.value_num == Some(82.0)
+        }));
+        assert!(snapshot.observations.iter().any(|obs| {
+            obs.metric_code == "P1_BINANCE_SPOT_CRCLB_30D_QUOTE_VOLUME"
+                && obs.value_num == Some(17_940.0)
         }));
     }
 

@@ -46,6 +46,7 @@ NPRM 是 Notice of Proposed Rulemaking，白话就是监管机构发布草案并
 | Dune                  | 链上分布、转账量、地址活跃度           | 仪表盘口径要逐项核对 |
 | CoinMetrics           | 清洗后链上交易量                       | 更适合严谨量化口径   |
 | CoinGlass             | 交易所 USDC balance、24h/7d/30d 变化、历史余额、集中度 | 前台公开接口用于监控；Open API key 仅作交叉验证，需记录前端解密/字段变更风险 |
+| Binance Spot          | CRCLB/USDT 与 USDC/USDT 现货价格、成交额、盘口、完整日线 | 长线辅助场内源；CRCLB 是 tokenized bStock，不替代 NYSE:CRCL 正股；运行 `cargo run --release -- collect --source binance-spot` |
 | TokenTerminal         | 链和协议层收入、余额、活跃度           | 口径变化要记录       |
 | RWA.xyz               | tokenized treasuries 与 RWA AUM        | 用于收益型竞争监控   |
 | Kaiko / exchange APIs | 交易所深度、流动性、USDC/USDT 交易质量 | 需要记录口径和权限   |
@@ -103,4 +104,5 @@ AUM 是 Assets Under Management，白话就是管理资产规模。
 | 最新 USDC 供应 | 查 Circle Transparency，并用 DefiLlama / CoinGecko 交叉验证异常值 | 写明数据日期、7D/30D、net mint/redeem |
 | 最新监管状态 | 查 Congress、OCC、Treasury、FinCEN、OFAC、FDIC | 区分法律、拟议规则、最终规则、评论期和媒体线索 |
 | 最新竞争数据 | 查 DefiLlama、CoinGecko、CoinMetrics、Dune、RWA.xyz | 写明快照日期和口径，偏差超阈值填 `missing_info` |
+| 最新币安现货长线数据 | 查 Binance Spot `CRCLBUSDT`、`USDCUSDT` 的 exchangeInfo、24h ticker、depth、1d klines | 写明这是币安场内辅助数据；CRCLB 不覆盖 NYSE:CRCL，USDCUSDT 不覆盖全市场 USDC 余额 |
 | 最新筹码数据 | 查 SEC Form 4 / 13F、FINRA short interest | 只影响仓位纪律，不直接改基本面情景 |

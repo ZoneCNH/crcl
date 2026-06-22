@@ -1,0 +1,3 @@
+    Finished `release` profile [optimized] target(s) in 0.09s
+     Running `target/release/crcl_data_collector full-analysis --save`
+saved work_docs/agent_runs/2026-06-19T11-12-08-861475+00-00-full-analysis.md and work_docs/agent_runs/2026-06-19T11-12-08-861475+00-00-full-analysis.json
